@@ -37,7 +37,24 @@ export interface ScrapedData {
 
 export enum AppMode {
   DEFENSE = 'defense',
-  TRANSLATOR = 'translator'
+  TRANSLATOR = 'translator',
+  NETWORK = 'network'
 }
 
 export type Language = 'ES' | 'EN' | 'FR' | 'DE';
+
+export interface NetworkStat {
+  date: string;
+  platform: string;
+  impressions: number;
+  engagement: number;
+  sentiment_score: number; // 0 to 100
+  top_topic: string;
+}
+
+export interface NetworkAgentAnalysis {
+  summary: string;
+  trends: string[];
+  recommendations: string[];
+  best_platform: string;
+}

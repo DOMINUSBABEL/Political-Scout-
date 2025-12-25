@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, ResponseTone } from "../types";
+import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis } from "../types";
 
 // Simulated "Knowledge Base" (The PDF Context)
 const KNOWLEDGE_BASE = `
@@ -86,7 +86,7 @@ export const analyzeAndGenerate = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: { parts }, // Pass parts array for multimodal
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -116,7 +116,21 @@ export const analyzeAndGenerate = async (
 
     const text = response.text;
     if (!text) throw new Error("No response from AI");
-    return JSON.parse(text) as AnalysisResult;
+    
+    // Clean potential markdown delimiters
+    let cleanText = text.trim();
+    if (cleanText.startsWith("```")) {
+      cleanText = cleanText.replace(/^```(json)?|```$/g, "");
+    }
+    
+    const parsed = JSON.parse(cleanText);
+    
+    // Safety check: ensure 'responses' array exists
+    if (!parsed.responses || !Array.isArray(parsed.responses)) {
+        parsed.responses = [];
+    }
+
+    return parsed as AnalysisResult;
 
   } catch (error) {
     console.error("Gemini Error:", error);
@@ -137,7 +151,7 @@ export const translateToMariate = async (text: string): Promise<string> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -147,5 +161,60 @@ export const translateToMariate = async (text: string): Promise<string> => {
   } catch (error) {
     console.error("Gemini Translator Error:", error);
     return "Error connecting to Mariate's brain.";
+  }
+};
+
+/**
+ * NEW AGENT: The Network Strategist
+ * Analyzes CSV/JSON data of social performance and gives insights.
+ */
+export const analyzeNetworkStats = async (stats: NetworkStat[]): Promise<NetworkAgentAnalysis> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const statsSummary = JSON.stringify(stats.slice(0, 20)); // Limit context size
+
+  const prompt = `
+    Eres "El Estratega", un experto en datos para campañas políticas digitales.
+    
+    Analiza esta matriz de datos de redes sociales (Muestra de las últimas publicaciones):
+    ${statsSummary}
+    
+    1. Identifica qué temas (top_topic) están funcionando mejor.
+    2. Detecta qué plataforma tiene mejor engagement.
+    3. Dame 3 recomendaciones tácticas para mejorar la próxima semana.
+    
+    Devuelve JSON.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            trends: { type: Type.ARRAY, items: { type: Type.STRING } },
+            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            best_platform: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No Data Analysis Returned");
+    return JSON.parse(text) as NetworkAgentAnalysis;
+
+  } catch (error) {
+    console.error("Network Agent Error:", error);
+    return {
+      summary: "Error analyzing data.",
+      trends: [],
+      recommendations: ["Check data format"],
+      best_platform: "N/A"
+    };
   }
 };

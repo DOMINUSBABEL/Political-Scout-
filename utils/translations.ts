@@ -17,6 +17,7 @@ export const translations = {
     logsTitle: "REGISTROS DEL SISTEMA [AGENTE SCOUT]",
     navDefense: "Defensa",
     navTranslator: "Traductor",
+    navNetwork: "Redes & Datos",
     footer: "Diseñado, desarrollado e implementado por Consultora Talleyrand",
     loginTitle: "ACCESO RESTRINGIDO",
     loginSubtitle: "Ingrese credenciales de seguridad",
@@ -25,7 +26,19 @@ export const translations = {
     enter: "ENTRAR AL SISTEMA",
     riskHigh: "RIESGO CRÍTICO DETECTADO",
     riskLegal: "Aprobación Requerida: Equipo Legal",
-    generatedStrategies: "ESTRATEGIAS GENERADAS"
+    generatedStrategies: "ESTRATEGIAS GENERADAS",
+    // Network Mode
+    netTitle: "INTELIGENCIA DE REDES",
+    netSubtitle: "Análisis de Datos Masivos y Tendencias",
+    uploadStats: "Cargar Base de Datos (CSV/JSON)",
+    dropFile: "Arrastre archivo de métricas aquí",
+    analyzingNetwork: "PROCESANDO MATRIZ DE DATOS...",
+    kpiReach: "Alcance Total",
+    kpiEng: "Engagement Prom.",
+    kpiSent: "Sentimiento +",
+    trendsTitle: "TENDENCIAS DETECTADAS (IA)",
+    recTitle: "RECOMENDACIONES ESTRATÉGICAS",
+    graphTitle: "RENDIMIENTO POR PLATAFORMA"
   },
   EN: {
     warRoomTitle: "WAR ROOM",
@@ -43,6 +56,7 @@ export const translations = {
     logsTitle: "SYSTEM LOGS [SCOUT AGENT]",
     navDefense: "Defense",
     navTranslator: "Translator",
+    navNetwork: "Network Data",
     footer: "Designed, developed and implemented by Consultora Talleyrand",
     loginTitle: "RESTRICTED ACCESS",
     loginSubtitle: "Enter security credentials",
@@ -51,7 +65,19 @@ export const translations = {
     enter: "ENTER SYSTEM",
     riskHigh: "CRITICAL RISK DETECTED",
     riskLegal: "Approval Required: Legal Counsel",
-    generatedStrategies: "GENERATED STRATEGIES"
+    generatedStrategies: "GENERATED STRATEGIES",
+    // Network Mode
+    netTitle: "NETWORK INTELLIGENCE",
+    netSubtitle: "Big Data Analysis & Trends",
+    uploadStats: "Upload Database (CSV/JSON)",
+    dropFile: "Drop metrics file here",
+    analyzingNetwork: "PROCESSING DATA MATRIX...",
+    kpiReach: "Total Reach",
+    kpiEng: "Avg. Engagement",
+    kpiSent: "Sentiment +",
+    trendsTitle: "AI DETECTED TRENDS",
+    recTitle: "STRATEGIC RECOMMENDATIONS",
+    graphTitle: "PERFORMANCE BY PLATFORM"
   },
   FR: {
     warRoomTitle: "SALLE DE GUERRE",
@@ -69,6 +95,7 @@ export const translations = {
     logsTitle: "JOURNAUX SYSTÈME [AGENT SCOUT]",
     navDefense: "Défense",
     navTranslator: "Traducteur",
+    navNetwork: "Réseaux & Données",
     footer: "Conçu, développé et mis en œuvre par Consultora Talleyrand",
     loginTitle: "ACCÈS RESTREINT",
     loginSubtitle: "Entrez vos identifiants de sécurité",
@@ -77,7 +104,19 @@ export const translations = {
     enter: "ENTRER DANS LE SYSTÈME",
     riskHigh: "RISQUE CRITIQUE DÉTECTÉ",
     riskLegal: "Approbation Requise : Conseiller Juridique",
-    generatedStrategies: "STRATÉGIES GÉNÉRÉES"
+    generatedStrategies: "STRATÉGIES GÉNÉRÉES",
+    // Network Mode
+    netTitle: "RENSEIGNEMENT RÉSEAU",
+    netSubtitle: "Analyse Big Data et Tendances",
+    uploadStats: "Télécharger Base de Données (CSV/JSON)",
+    dropFile: "Déposer le fichier de métriques ici",
+    analyzingNetwork: "TRAITEMENT DE LA MATRICE DE DONNÉES...",
+    kpiReach: "Portée Totale",
+    kpiEng: "Engagement Moy.",
+    kpiSent: "Sentiment +",
+    trendsTitle: "TENDANCES DÉTECTÉES (IA)",
+    recTitle: "RECOMMANDATIONS STRATÉGIQUES",
+    graphTitle: "PERFORMANCE PAR PLATEFORME"
   },
   DE: {
     warRoomTitle: "LAGEZENTRUM",
@@ -95,6 +134,7 @@ export const translations = {
     logsTitle: "SYSTEMPROTOKOLLE [SCOUT AGENT]",
     navDefense: "Verteidigung",
     navTranslator: "Übersetzer",
+    navNetwork: "Netzwerkdaten",
     footer: "Entworfen, entwickelt und implementiert von Consultora Talleyrand",
     loginTitle: "ZUGANG BESCHRÄNKT",
     loginSubtitle: "Sicherheitsanmeldeinformationen eingeben",
@@ -103,7 +143,19 @@ export const translations = {
     enter: "SYSTEM BETRETEN",
     riskHigh: "KRITISCHES RISIKO ERKANNT",
     riskLegal: "Genehmigung Erforderlich: Rechtsabteilung",
-    generatedStrategies: "GENERIERTE STRATEGIEN"
+    generatedStrategies: "GENERIERTE STRATEGIEN",
+    // Network Mode
+    netTitle: "NETZWERKINTELLIGENZ",
+    netSubtitle: "Big Data Analyse & Trends",
+    uploadStats: "Datenbank Hochladen (CSV/JSON)",
+    dropFile: "Metrik-Datei hier ablegen",
+    analyzingNetwork: "DATENMATRIX VERARBEITEN...",
+    kpiReach: "Gesamreichweite",
+    kpiEng: "Durchschn. Engagement",
+    kpiSent: "Stimmung +",
+    trendsTitle: "KI ERKANNTE TRENDS",
+    recTitle: "STRATEGISCHE EMPFEHLUNGEN",
+    graphTitle: "LEISTUNG NACH PLATTFORM"
   }
 };
 

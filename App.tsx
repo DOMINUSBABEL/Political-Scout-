@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Nav } from './components/Nav';
 import { DefenseMode } from './components/DefenseMode';
 import { TranslatorMode } from './components/TranslatorMode';
+import { NetworkAnalysisMode } from './components/NetworkAnalysisMode';
 import { Login } from './components/Login';
 import { AppMode, Language } from './types';
 import { t } from './utils/translations';
@@ -28,11 +29,9 @@ function App() {
       {/* Main Content Area */}
       <main className="flex-1 ml-20 md:ml-72 p-4 md:p-8 overflow-y-auto h-screen relative z-10">
         <div className="max-w-7xl mx-auto h-full pb-10">
-          {currentMode === AppMode.DEFENSE ? (
-            <DefenseMode lang={language} />
-          ) : (
-            <TranslatorMode />
-          )}
+          {currentMode === AppMode.DEFENSE && <DefenseMode lang={language} />}
+          {currentMode === AppMode.TRANSLATOR && <TranslatorMode />}
+          {currentMode === AppMode.NETWORK && <NetworkAnalysisMode lang={language} />}
         </div>
         
         {/* Professional Footer Branding */}

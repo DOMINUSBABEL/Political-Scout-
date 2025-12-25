@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { ScrapedData } from "../types";
 
 // Simulate network delays for UX pacing
@@ -24,7 +24,7 @@ const extractHintsFromUrl = (url: string): string => {
  * The Scout Agent now attempts to actually "read" the internet using Gemini's Grounding (Google Search) capabilities.
  */
 export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => void): Promise<ScrapedData> => {
-  onStatusUpdate("🤖 Scout Agent Initialized...");
+  onStatusUpdate("🤖 Scout Agent Initialized (Gemini 3 Pro)...");
   await delay(500);
 
   // 1. CHECK FOR SIMULATION / DEMO MODE
@@ -79,7 +79,7 @@ export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [{ 
           text: `You are a web scraper agent. Your goal is to extract the content of this specific social media URL: ${url}. 
@@ -135,24 +135,48 @@ export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => 
 };
 
 /**
- * Uses Gemini 3 Vision capabilities to describe an uploaded image.
+ * Uses Gemini 3 Pro Vision capabilities to extract FULL data from an image (OCR + Context).
  */
-export const describeUploadedMedia = async (base64Data: string, mimeType: string): Promise<string> => {
+export const extractDataFromImage = async (base64Data: string, mimeType: string): Promise<ScrapedData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: "Describe this image in detail. Identify if it's a meme, a screenshot of a tweet, or a photo. If it's a meme, explain the joke/irony. If it contains text, transcribe it precisely." }
+          { text: `
+            Analyze this social media screenshot.
+            1. Extract the AUTHOR handle/name exactly as shown (e.g., @username or Name).
+            2. Extract the exact TEXT CONTENT of the post (OCR).
+            3. Describe the visual context (is it a meme? a news article? a photo? implied sentiment?).
+            
+            Return JSON.
+          ` }
         ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            author: { type: Type.STRING },
+            content: { type: Type.STRING },
+            mediaDescription: { type: Type.STRING },
+            platform: { type: Type.STRING },
+          }
+        }
       }
     });
-    return response.text || "No description generated.";
+    
+    const text = response.text;
+    if (!text) return { author: "", content: "", platform: "Unknown" };
+    
+    return JSON.parse(text) as ScrapedData;
+
   } catch (e) {
     console.error("Scout Vision Error:", e);
-    return "Failed to analyze image visually.";
+    return { author: "", content: "", platform: "Unknown", mediaDescription: "Failed to extract data." };
   }
 };

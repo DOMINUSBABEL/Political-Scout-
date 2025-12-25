@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { analyzeAndGenerate } from '../services/geminiService';
-import { scoutUrl, describeUploadedMedia } from '../services/scoutService';
+import { scoutUrl, extractDataFromImage } from '../services/scoutService';
 import { AnalysisResult, Language } from '../types';
 import { ResponseCard } from './ResponseCard';
 import { t } from '../utils/translations';
@@ -80,10 +80,33 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
         setSelectedImage(base64Data);
         setImageMime(mime);
         
-        addLog("👁️ Analyzing uploaded image with Scout Vision...");
-        const desc = await describeUploadedMedia(base64Data, mime);
-        setScoutVisualDescription(desc);
-        addLog("✅ Image analyzed.");
+        // Auto-analyze with Scout Vision (Gemini 3 Pro)
+        setScoutLogs([]);
+        addLog("👁️ Analyzing uploaded image (Gemini 3 Pro Vision)...");
+        addLog("📤 Extracting Author, Text, and Context...");
+        
+        try {
+          const data = await extractDataFromImage(base64Data, mime);
+          
+          if (data.author) {
+            setAuthor(data.author);
+            addLog(`👤 Author Detected: ${data.author}`);
+          }
+          
+          if (data.content) {
+            setPostContent(data.content);
+            addLog(`📝 Text Extracted: "${data.content.substring(0, 30)}..."`);
+          }
+          
+          if (data.mediaDescription) {
+            setScoutVisualDescription(data.mediaDescription);
+            addLog(`🖼️ Visual Context: ${data.mediaDescription.substring(0, 30)}...`);
+          }
+          
+          addLog("✅ Image Processing Complete. Ready for Analysis.");
+        } catch (err) {
+           addLog("⚠️ Visual Extraction partial failure.");
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -208,7 +231,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                     <textarea
                       value={postContent}
                       onChange={(e) => setPostContent(e.target.value)}
-                      placeholder={scouting ? "Scouting..." : "Paste content here if Scout is blocked by AuthWall..."}
+                      placeholder={scouting ? "Scouting..." : "Paste content here if Scout is blocked by AuthWall, or upload a screenshot to auto-fill."}
                       className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all font-mono text-xs md:text-sm min-h-[120px]"
                     />
                   </div>
@@ -242,7 +265,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                            <button 
                              type="button"
                              className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full shadow-md flex items-center justify-center font-bold text-xs" 
-                             onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setScoutVisualDescription(''); }}>
+                             onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setScoutVisualDescription(''); setAuthor(''); setPostContent(''); }}>
                              ×
                            </button>
                         </div>
@@ -258,7 +281,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                   <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 h-32 overflow-y-auto custom-scrollbar">
                     <div className="flex items-center space-x-2 mb-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-mariate-green animate-pulse"></div>
-                        <span className="text-[10px] text-mariate-green font-bold uppercase tracking-wider">Gemini Vision Analysis</span>
+                        <span className="text-[10px] text-mariate-green font-bold uppercase tracking-wider">Gemini 3 Pro Vision</span>
                     </div>
                     <p className="text-xs text-slate-300 font-mono leading-relaxed">
                       {scoutVisualDescription || (scouting ? t(lang, 'scouting') : "Waiting for visual input...")}
@@ -377,12 +400,12 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                         result.sentiment === 'Negative' ? 'text-red-400' : 
                         result.sentiment === 'Positive' ? 'text-emerald-400' : 'text-blue-400'
                     }`}>
-                        {result.sentiment.toUpperCase()}
+                        {result.sentiment?.toUpperCase() || 'UNKNOWN'}
                     </span>
                     </div>
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-center items-center hover:border-slate-600 transition-colors group">
                     <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mb-2 group-hover:text-emerald-500 transition-colors">INTENT</span>
-                    <span className="text-xl font-bold text-white text-center">{result.intent}</span>
+                    <span className="text-xl font-bold text-white text-center">{result.intent || 'N/A'}</span>
                     </div>
                     <div className={`border rounded-xl p-6 flex flex-col justify-center items-center transition-all ${
                     result.riskLevel === 'High' ? 'bg-red-900/20 border-red-500/50' : 
@@ -395,7 +418,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                         result.riskLevel === 'Medium' ? 'text-yellow-500' : 
                         'text-emerald-500'
                     }`}>
-                        {result.riskLevel.toUpperCase()}
+                        {result.riskLevel?.toUpperCase() || 'UNKNOWN'}
                     </span>
                     </div>
                 </div>
@@ -409,7 +432,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12">
-            {result.responses.map((response, idx) => (
+            {result.responses?.map((response, idx) => (
               <ResponseCard key={idx} response={response} index={idx} />
             ))}
           </div>

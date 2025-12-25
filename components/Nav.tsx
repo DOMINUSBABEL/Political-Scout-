@@ -50,6 +50,20 @@ export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang })
           </svg>
           <span className="hidden md:block font-medium tracking-wide">{t(lang, 'navTranslator')}</span>
         </button>
+        
+        <button
+          onClick={() => setMode(AppMode.NETWORK)}
+          className={`w-full flex items-center p-4 rounded-xl transition-all duration-200 group ${
+            currentMode === AppMode.NETWORK 
+              ? 'bg-gradient-to-r from-emerald-900/40 to-slate-900 text-emerald-400 border border-emerald-900/50 shadow-inner' 
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:mr-3 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+          </svg>
+          <span className="hidden md:block font-medium tracking-wide">{t(lang, 'navNetwork')}</span>
+        </button>
       </div>
 
       {/* Language Selector */}
