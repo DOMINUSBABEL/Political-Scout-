@@ -15,6 +15,7 @@ export interface AnalysisResult {
   intent: string;
   riskLevel: 'Low' | 'Medium' | 'High';
   warningMessage?: string;
+  legalReviewRequested?: boolean; // New field
   responses: GeneratedResponse[];
 }
 

@@ -5,17 +5,29 @@ import { ScrapedData } from "../types";
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
+ * Helper to extract potential content from URL slugs (common in News/Threads/FB)
+ * e.g. facebook.com/user/posts/mariate-is-destroying-the-paramo -> "mariate is destroying the paramo"
+ */
+const extractHintsFromUrl = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+    // Usually the last segment or the one before ID is the slug
+    const potentialSlug = pathSegments.find(s => s.length > 15 && s.includes('-')) || "";
+    return potentialSlug.replace(/-/g, ' ');
+  } catch (e) {
+    return "";
+  }
+};
+
+/**
  * The Scout Agent now attempts to actually "read" the internet using Gemini's Grounding (Google Search) capabilities.
- * If the URL is a "simulation" URL, it returns the demo data.
- * If it's a real URL, it tries to fetch real context.
  */
 export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => void): Promise<ScrapedData> => {
   onStatusUpdate("🤖 Scout Agent Initialized...");
   await delay(500);
 
   // 1. CHECK FOR SIMULATION / DEMO MODE
-  // We only return the "Mariate/Minería" fake data if the user explicitly clicked "Load Simulation" 
-  // or entered a specific test URL.
   if (url.includes("UsuarioOpositor") || url.includes("simulacion") || url.includes("demo-mode")) {
      onStatusUpdate("⚠️ SIMULATION MODE DETECTED. Loading training scenario...");
      await delay(1000);
@@ -29,23 +41,51 @@ export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => 
   }
 
   // 2. REAL EXECUTION MODE (GEMINI SEARCH)
-  const hostname = new URL(url).hostname;
+  let hostname = "unknown";
+  try {
+    hostname = new URL(url).hostname;
+  } catch (e) {
+    console.warn("Invalid URL");
+  }
+
   onStatusUpdate(`🌐 Connecting to Live Network: ${hostname}...`);
   await delay(800);
-  
-  onStatusUpdate("🛰️ Engaging Gemini Search Grounding to find post content...");
+
+  const urlLower = url.toLowerCase();
+  const isMeta = urlLower.includes("facebook") || urlLower.includes("instagram") || urlLower.includes("threads");
+  const hints = extractHintsFromUrl(url);
+
+  let platformSpecificPrompt = "";
+
+  if (isMeta) {
+    onStatusUpdate("🛡️ Meta Network (FB/Threads) detected. Activating heuristic bypass...");
+    await delay(500);
+    onStatusUpdate("🔍 Parsing URL slug for content clues...");
+    
+    // Meta platforms often block direct scraping. We ask Gemini to search for the *text* 
+    // that might be associated with the URL, rather than the URL itself.
+    platformSpecificPrompt = `
+      This is a Facebook or Threads URL. Direct scraping is often blocked.
+      1. Analyze the URL structure: "${url}".
+      2. If the URL contains a text slug (e.g. /my-opinion-on-mining), use that as a search query to find the actual post text on Google.
+      3. URL Hint: "${hints}".
+      4. Search for recent public posts by the likely author that match this topic.
+    `;
+  } else {
+    onStatusUpdate("🛰️ Engaging Gemini Search Grounding...");
+  }
   
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // We use a model capable of search grounding to try and "read" the external link
-    // Note: Twitter/X often blocks crawlers, but Google Search sometimes has the cached snippet.
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
         parts: [{ 
           text: `You are a web scraper agent. Your goal is to extract the content of this specific social media URL: ${url}. 
           
+          ${platformSpecificPrompt}
+
           Search the web for this post.
           1. Identify the Author.
           2. Extract the main text content of the post/tweet exactly as written.
@@ -62,16 +102,13 @@ export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => 
     const resultText = response.text || "";
     onStatusUpdate("📥 Processing search results...");
     await delay(500);
-
-    // Naive parsing of the AI's natural language response
-    // In a production app, we would force JSON output, but Grounding can be chatty.
     
     if (resultText.includes("ACCESS_DENIED") || resultText.length < 10) {
       onStatusUpdate("🔒 Target is protected by AuthWall (Anti-Scraping Active).");
       onStatusUpdate("⚠️ ACTION REQUIRED: Please paste text manually or upload screenshot.");
       return {
         author: "",
-        content: "", // Return empty so user knows to paste it
+        content: "",
         platform: hostname,
         mediaDescription: "Scout could not bypass login wall. Visual manual upload recommended."
       };
@@ -79,10 +116,9 @@ export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => 
 
     onStatusUpdate("✅ Content Trace Found.");
     
-    // Attempt to structure the AI response roughly
     return {
-      author: "Detected from URL", // Let the user fill this if fuzzy
-      content: resultText, // The AI's summary of the tweet
+      author: "Detected from URL", 
+      content: resultText,
       platform: hostname,
       mediaDescription: "Derived from search context."
     };
