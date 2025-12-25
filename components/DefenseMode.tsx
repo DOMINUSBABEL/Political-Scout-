@@ -40,16 +40,26 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
     setError('');
     setScoutVisualDescription('');
     setResult(null);
+    // Clear previous fields to avoid confusion if scout fails
+    setAuthor('');
+    setPostContent('');
 
     try {
       const data = await scoutUrl(url, addLog);
-      setAuthor(data.author);
-      setPostContent(data.content);
-      if (data.mediaDescription) {
-        setScoutVisualDescription(data.mediaDescription);
-        addLog(`✅ Visual Context Acquired: "${data.mediaDescription.substring(0, 50)}..."`);
+      
+      if (data.content) {
+          setAuthor(data.author || "Unknown");
+          setPostContent(data.content);
+          if (data.mediaDescription) {
+            setScoutVisualDescription(data.mediaDescription);
+            addLog(`✅ Visual Context Acquired.`);
+          }
+          addLog("🟢 Scout Mission Complete. Data loaded.");
+      } else {
+          // Scout failed to get text (Access Denied)
+          addLog("⚠️ Content protected. Manual input required.");
       }
-      addLog("🟢 Scout Mission Complete. Ready for Analysis.");
+      
     } catch (err) {
       addLog("🔴 Scout Failed: Connection refused or anti-bot triggered.");
       setError("Scout failed to retrieve data.");
@@ -109,13 +119,14 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
   };
 
   const fillSimulationData = () => {
-    setUrl('https://twitter.com/UsuarioOpositor/status/123456789');
+    // We use the specific "demo-mode" string to trigger the mock logic in scoutService
+    setUrl('https://twitter.com/demo-mode/status/123456789');
     setAuthor('');
     setPostContent('');
     setScoutLogs([]);
     setResult(null);
     setScoutVisualDescription('');
-    addLog("ℹ️ Simulation URL loaded. Click 'Search' to deploy Scout.");
+    addLog("ℹ️ Simulation URL loaded. Click 'DEPLOY SCOUT' to see the Demo Scenario.");
   };
 
   return (
@@ -153,7 +164,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                         type="text"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        placeholder="https://twitter.com/..."
+                        placeholder="Link (Twitter, TikTok, Facebook, Instagram, Threads...)"
                         className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all placeholder-slate-600"
                     />
                     <button 
@@ -191,7 +202,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                     <textarea
                       value={postContent}
                       onChange={(e) => setPostContent(e.target.value)}
-                      placeholder="..."
+                      placeholder={scouting ? "Scouting..." : "Paste content here if Scout is blocked by AuthWall..."}
                       className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all font-mono text-sm min-h-[120px]"
                     />
                   </div>

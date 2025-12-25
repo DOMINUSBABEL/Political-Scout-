@@ -1,73 +1,105 @@
 import { GoogleGenAI } from "@google/genai";
 import { ScrapedData } from "../types";
 
-// Simulate network delays and processing time
+// Simulate network delays for UX pacing
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Simulates the "Scout" agent navigating to a URL, bypassing bot protections,
- * and extracting content. In a real backend, this would use Puppeteer/Playwright.
+ * The Scout Agent now attempts to actually "read" the internet using Gemini's Grounding (Google Search) capabilities.
+ * If the URL is a "simulation" URL, it returns the demo data.
+ * If it's a real URL, it tries to fetch real context.
  */
 export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => void): Promise<ScrapedData> => {
   onStatusUpdate("🤖 Scout Agent Initialized...");
+  await delay(500);
+
+  // 1. CHECK FOR SIMULATION / DEMO MODE
+  // We only return the "Mariate/Minería" fake data if the user explicitly clicked "Load Simulation" 
+  // or entered a specific test URL.
+  if (url.includes("UsuarioOpositor") || url.includes("simulacion") || url.includes("demo-mode")) {
+     onStatusUpdate("⚠️ SIMULATION MODE DETECTED. Loading training scenario...");
+     await delay(1000);
+     onStatusUpdate("📦 Retrieving mock data from 'Minería' scenario...");
+     return {
+        author: "@UsuarioOpositor",
+        content: "Esa señora @MariateMontoya está loca, quiere acabar con los páramos haciendo huecos. Típica uribista depredadora. #FueraMariate",
+        mediaDescription: "No media detected. Pure text tweet.",
+        platform: 'Twitter (Simulation)'
+      };
+  }
+
+  // 2. REAL EXECUTION MODE (GEMINI SEARCH)
+  const hostname = new URL(url).hostname;
+  onStatusUpdate(`🌐 Connecting to Live Network: ${hostname}...`);
   await delay(800);
-
-  onStatusUpdate(`🌐 Navigating to ${new URL(url).hostname}...`);
-  await delay(1000);
-
-  // Mock Logic for specific simulation scenarios based on URL keywords
   
-  // SCENARIO 1: TikTok Video (Requires Audio/Video transcription simulation)
-  if (url.includes("tiktok")) {
-    onStatusUpdate("📱 Platform Detected: TikTok");
+  onStatusUpdate("🛰️ Engaging Gemini Search Grounding to find post content...");
+  
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // We use a model capable of search grounding to try and "read" the external link
+    // Note: Twitter/X often blocks crawlers, but Google Search sometimes has the cached snippet.
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: {
+        parts: [{ 
+          text: `You are a web scraper agent. Your goal is to extract the content of this specific social media URL: ${url}. 
+          
+          Search the web for this post.
+          1. Identify the Author.
+          2. Extract the main text content of the post/tweet exactly as written.
+          3. Describe any image or video thumbnail if mentioned in search results.
+          
+          If you ABSOLUTELY cannot find the specific text of this post (due to privacy/auth walls), return "ACCESS_DENIED" in the content field. Do NOT hallucinate or invent a tweet.` 
+        }]
+      },
+      config: {
+        tools: [{ googleSearch: {} }] // Enable Google Search
+      }
+    });
+
+    const resultText = response.text || "";
+    onStatusUpdate("📥 Processing search results...");
     await delay(500);
-    onStatusUpdate("🛡️ Bypassing anti-scraping captcha...");
-    await delay(1200);
-    onStatusUpdate("🎥 Extracting video stream...");
-    await delay(800);
-    onStatusUpdate("🗣️ Transcribing audio content...");
+
+    // Naive parsing of the AI's natural language response
+    // In a production app, we would force JSON output, but Grounding can be chatty.
     
+    if (resultText.includes("ACCESS_DENIED") || resultText.length < 10) {
+      onStatusUpdate("🔒 Target is protected by AuthWall (Anti-Scraping Active).");
+      onStatusUpdate("⚠️ ACTION REQUIRED: Please paste text manually or upload screenshot.");
+      return {
+        author: "",
+        content: "", // Return empty so user knows to paste it
+        platform: hostname,
+        mediaDescription: "Scout could not bypass login wall. Visual manual upload recommended."
+      };
+    }
+
+    onStatusUpdate("✅ Content Trace Found.");
+    
+    // Attempt to structure the AI response roughly
     return {
-      author: "@InfluencerGenerico",
-      content: "Dicen que Mariate no sabe nada de tecnología, miren este video donde se enreda con el micrófono. #Fail #Politica",
-      mediaDescription: "Video de una mujer ajustando un micrófono con dificultad en una tarima. Texto superpuesto: 'La abuela no sabe usar Zoom'. El tono es de burla.",
-      platform: 'TikTok'
+      author: "Detected from URL", // Let the user fill this if fuzzy
+      content: resultText, // The AI's summary of the tweet
+      platform: hostname,
+      mediaDescription: "Derived from search context."
+    };
+
+  } catch (error) {
+    console.error("Scout Error:", error);
+    onStatusUpdate("🔴 Connection Failed. Anti-bot systems active.");
+    return {
+      author: "",
+      content: "",
+      platform: hostname
     };
   }
-
-  // SCENARIO 2: Instagram Post (Visual context is key)
-  if (url.includes("instagram")) {
-    onStatusUpdate("📸 Platform Detected: Instagram");
-    await delay(800);
-    onStatusUpdate("👁️ Analyzing image context with Gemini Vision...");
-    await delay(1500);
-    
-    return {
-      author: "@FashionPolitic",
-      content: "El outfit de hoy de la candidata... sin comentarios. 🤡",
-      mediaDescription: "Foto de la candidata usando botas pantaneras y un casco de ingeniero mal puesto. Contexto visual: Parece estar en una visita de obra. La imagen sugiere desaliño.",
-      platform: 'Instagram'
-    };
-  }
-
-  // DEFAULT SCENARIO: X (Twitter) - Text based with potential image
-  onStatusUpdate("🐦 Platform Detected: X (Twitter)");
-  onStatusUpdate("⏳ Waiting for dynamic DOM hydration...");
-  await delay(1200);
-  onStatusUpdate("📄 Extracting thread context...");
-
-  // Default simulation return
-  return {
-    author: "@UsuarioOpositor",
-    content: "Esa señora @MariateMontoya está loca, quiere acabar con los páramos haciendo huecos. Típica uribista depredadora.",
-    // Simulating that no image was found, or just text
-    platform: 'Twitter'
-  };
 };
 
 /**
  * Uses Gemini 3 Vision capabilities to describe an uploaded image.
- * This effectively gives the Scout "eyes" for user-uploaded screenshots.
  */
 export const describeUploadedMedia = async (base64Data: string, mimeType: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
