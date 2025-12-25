@@ -1,16 +1,18 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { analyzeAndGenerate } from '../services/geminiService';
 import { scoutUrl, extractDataFromImage } from '../services/scoutService';
-import { AnalysisResult, Language } from '../types';
+import { AnalysisResult, Language, CandidateProfile } from '../types';
 import { ResponseCard } from './ResponseCard';
 import { ProgressBar } from './ProgressBar';
 import { t } from '../utils/translations';
 
 interface DefenseModeProps {
   lang: Language;
+  activeProfile: CandidateProfile;
 }
 
-export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
+export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile }) => {
   const [url, setUrl] = useState('');
   const [postContent, setPostContent] = useState('');
   const [author, setAuthor] = useState('');
@@ -151,9 +153,11 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
 
     try {
       const imageContext = selectedImage ? { base64: selectedImage, mimeType: imageMime } : undefined;
+      // PASS ACTIVE PROFILE TO GEMINI
       const analysis = await analyzeAndGenerate(
         author, 
         postContent, 
+        activeProfile,
         imageContext, 
         scoutVisualDescription
       );
@@ -168,7 +172,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
 
   const handleLegalFlag = () => {
     setLegalFlagged(true);
-    alert("ALERT: Content flagged for immediate review by Legal Counsel (Dr. Martínez). Protocol suspended until approval.");
+    alert("ALERT: Content flagged for immediate review by Legal Counsel. Protocol suspended until approval.");
   };
 
   const fillSimulationData = () => {
@@ -182,7 +186,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-12 px-2 md:px-0 relative">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-12 px-2 md:px-0 relative">
       <ProgressBar active={loading || scouting} progress={progress} label={scouting ? t(lang, 'scouting') : t(lang, 'analyzing')} />
 
       {/* Header */}
@@ -192,9 +196,12 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
              <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
             {t(lang, 'warRoomTitle')}
           </h1>
-          <p className="text-slate-400 mt-2 font-light tracking-wide text-xs md:text-sm pl-5 font-mono text-emerald-500/80 uppercase">
-             // {t(lang, 'dashboardSubtitle')}
-          </p>
+          <div className="flex items-center gap-2 mt-2">
+             <span className="text-xs text-slate-500 uppercase font-mono tracking-widest">// ACTIVE AGENT:</span>
+             <span className="text-xs text-emerald-400 font-bold uppercase tracking-widest bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-500/30">
+               {activeProfile.name}
+             </span>
+          </div>
         </div>
         <button 
           onClick={fillSimulationData}
@@ -473,13 +480,31 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
                </div>
             </div>
 
+            {/* Follow-up Specialist Agent */}
+            <div className="glass-panel p-6 rounded-xl border border-blue-500/30 bg-blue-900/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl">📡</div>
+                <h3 className="text-blue-300 font-bold uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                    Agent: The Follow-up Specialist
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {result.followUpSuggestions?.map((suggestion, idx) => (
+                        <div key={idx} className="bg-slate-900/50 p-4 rounded-lg border border-blue-500/20 flex items-start gap-3">
+                            <span className="text-blue-400 font-mono font-bold">0{idx+1}</span>
+                            <p className="text-slate-300 text-xs leading-relaxed">{suggestion}</p>
+                        </div>
+                    )) || <p className="text-slate-500 italic text-xs">No follow-up actions generated.</p>}
+                </div>
+            </div>
+
             <div className="flex items-center gap-4 py-4">
                 <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent flex-1"></div>
-                <span className="text-emerald-500 text-xs font-mono font-bold tracking-[0.3em] uppercase glow-text">Generated Counter-Measures</span>
+                <span className="text-emerald-500 text-xs font-mono font-bold tracking-[0.3em] uppercase glow-text">Generated Counter-Measures (5 Options)</span>
                 <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent flex-1"></div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-12">
+            {/* Updated Grid for 5 Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
                 {result.responses?.map((response, idx) => (
                 <ResponseCard key={idx} response={response} index={idx} />
                 ))}

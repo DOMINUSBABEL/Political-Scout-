@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -21,6 +22,7 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilterType>('ALL');
+  const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
 
   // Robust CSV Parser
   const parseCSV = (text: string): NetworkStat[] => {
@@ -180,14 +182,32 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   };
 
   const filteredStats = useMemo(() => {
-      if (sentimentFilter === 'ALL') return stats;
-      return stats.filter(s => {
-          if (sentimentFilter === '0-50') return s.sentiment_score >= 0 && s.sentiment_score <= 50;
-          if (sentimentFilter === '50-75') return s.sentiment_score > 50 && s.sentiment_score <= 75;
-          if (sentimentFilter === '75-100') return s.sentiment_score > 75 && s.sentiment_score <= 100;
-          return true;
-      });
-  }, [stats, sentimentFilter]);
+      let filtered = stats;
+
+      // Filter by Sentiment
+      if (sentimentFilter !== 'ALL') {
+          filtered = filtered.filter(s => {
+            if (sentimentFilter === '0-50') return s.sentiment_score >= 0 && s.sentiment_score <= 50;
+            if (sentimentFilter === '50-75') return s.sentiment_score > 50 && s.sentiment_score <= 75;
+            if (sentimentFilter === '75-100') return s.sentiment_score > 75 && s.sentiment_score <= 100;
+            return true;
+        });
+      }
+
+      // Filter by Platform (Interactive)
+      if (filterPlatform) {
+          filtered = filtered.filter(s => s.platform === filterPlatform);
+      }
+
+      return filtered;
+  }, [stats, sentimentFilter, filterPlatform]);
+
+  const handleLegendClick = (e: any) => {
+      const platformName = e.value; // The platform name usually comes in 'value' or 'id'
+      if (platformName) {
+          setFilterPlatform(prev => prev === platformName ? null : platformName);
+      }
+  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -275,6 +295,15 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                            </button>
                        ))}
                    </div>
+                   
+                   {/* Platform Filter Badge */}
+                   {filterPlatform && (
+                        <div className="flex items-center gap-2 bg-blue-900/50 px-3 py-1 rounded text-[10px] font-bold border border-blue-500/50 text-blue-300">
+                             PLATFORM: {filterPlatform}
+                             <button onClick={() => setFilterPlatform(null)} className="hover:text-white">✕</button>
+                        </div>
+                   )}
+
                    <div className="ml-auto text-[10px] text-slate-500 font-mono">
                        INDEXING {filteredStats.length} / {stats.length} RECORDS
                    </div>
@@ -331,24 +360,30 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
               </ResponsiveContainer>
            </div>
 
-           {/* AI Agent Report (Side Panel) */}
+           {/* AI Campaign Manager Report (Side Panel) */}
            <div className="lg:row-span-2 bg-slate-950/40 backdrop-blur-xl rounded-xl p-0 border border-white/5 flex flex-col shadow-2xl relative overflow-hidden">
               <div className="p-6 border-b border-white/5 bg-white/5">
                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] text-xs">AI</div>
+                    <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] text-lg">
+                        <span className="animate-pulse">📊</span>
+                    </div>
                     <div>
-                        <h3 className="text-white font-bold text-xs uppercase tracking-widest">Strategic Report</h3>
-                        <p className="text-[9px] text-blue-400 font-mono">MODEL: GEMINI 3 PRO</p>
+                        <h3 className="text-white font-bold text-xs uppercase tracking-widest">Campaign Manager</h3>
+                        <p className="text-[9px] text-blue-400 font-mono">AGENT STATUS: ACTIVE</p>
                     </div>
                  </div>
               </div>
 
               {analysis ? (
                  <div className="space-y-6 flex-1 text-xs p-6 overflow-y-auto custom-scrollbar">
-                    <div className="bg-blue-900/10 p-4 rounded-lg border border-blue-500/20">
+                    
+                    {/* Executive Summary Section */}
+                    <div className="bg-gradient-to-r from-blue-900/10 to-transparent p-4 rounded-lg border-l-2 border-blue-500">
+                      <h4 className="text-blue-400 font-bold uppercase text-[10px] mb-2 tracking-widest">Executive Summary</h4>
                       <p className="text-slate-300 leading-relaxed font-light italic">"{analysis.summary}"</p>
                     </div>
                     
+                    {/* Trends Section */}
                     <div>
                        <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
                          <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
@@ -357,12 +392,14 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                        <ul className="space-y-2">
                           {analysis.trends.map((t, i) => (
                              <li key={i} className="flex items-start gap-3 text-slate-400 border-b border-dashed border-white/5 pb-2">
-                                <span className="text-emerald-500 font-mono">0{i+1}</span> {t}
+                                <span className="text-emerald-500 font-mono">0{i+1}</span> 
+                                <span className="leading-tight">{t}</span>
                              </li>
                           ))}
                        </ul>
                     </div>
 
+                    {/* Recommendations Section */}
                     <div>
                        <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
                          <span className="w-1 h-1 rounded-full bg-purple-500"></span>
@@ -370,7 +407,8 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                        </h4>
                        <ul className="space-y-2">
                           {analysis.recommendations.map((r, i) => (
-                             <li key={i} className="bg-white/5 p-3 rounded text-slate-300 shadow-sm border border-white/5">
+                             <li key={i} className="bg-white/5 p-3 rounded text-slate-300 shadow-sm border border-white/5 hover:bg-white/10 transition-colors cursor-default">
+                                <span className="block text-purple-400 font-bold text-[9px] mb-1">STRATEGY {i+1}</span>
                                 {r}
                              </li>
                           ))}
@@ -380,31 +418,57 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
               ) : (
                  <div className="flex-1 flex items-center justify-center flex-col text-slate-600">
                     <div className="w-12 h-12 border-2 border-white/10 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                    <p className="text-[10px] font-mono uppercase tracking-widest">Awaiting Data Stream...</p>
+                    <p className="text-[10px] font-mono uppercase tracking-widest">Generating Strategic Report...</p>
                  </div>
               )}
            </div>
 
-           {/* Chart 2: Engagement by Platform (Bar Chart) */}
+           {/* Chart 2: Engagement by Platform (Bar Chart) with Interactive Filtering */}
            <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
-              <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> ENGAGEMENT BY PLATFORM
-              </h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> ENGAGEMENT BY PLATFORM
+                </h3>
+                {filterPlatform && (
+                    <span className="text-[9px] text-blue-400 uppercase tracking-widest animate-pulse">
+                        * Filter Active: {filterPlatform}
+                    </span>
+                )}
+              </div>
               <ResponsiveContainer width="100%" height="85%">
                 <BarChart data={filteredStats}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
                   <XAxis dataKey="platform" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                   <RechartsTooltip content={<CustomTooltip />} />
-                  <Bar dataKey="engagement" fill="#8884d8" radius={[4, 4, 0, 0]}>
+                  <Legend 
+                    onClick={handleLegendClick} 
+                    wrapperStyle={{ cursor: 'pointer', fontSize: '10px', paddingTop: '10px' }} 
+                    formatter={(value) => <span style={{ color: '#cbd5e1' }}>{value} {filterPlatform === value ? '(Selected)' : ''}</span>}
+                  />
+                  <Bar 
+                    dataKey="engagement" 
+                    fill="#8884d8" 
+                    radius={[4, 4, 0, 0]} 
+                    name="Engagement" 
+                    cursor="pointer" 
+                    onClick={(data: any) => setFilterPlatform(prev => prev === (data.platform || data.payload?.platform) ? null : (data.platform || data.payload?.platform))}
+                  >
                     {
                       filteredStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.platform === 'TikTok' ? '#db2777' : entry.platform === 'X' ? '#94a3b8' : '#8b5cf6'} />
+                        <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.platform === 'TikTok' ? '#db2777' : entry.platform === 'X' ? '#94a3b8' : '#8b5cf6'} 
+                            opacity={filterPlatform && filterPlatform !== entry.platform ? 0.3 : 1}
+                        />
                       ))
                     }
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <p className="text-center text-[9px] text-slate-600 mt-2 font-mono">
+                  * Click bars or legend to filter data
+              </p>
            </div>
 
         </div>

@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
-import { translateToMariate } from '../services/geminiService';
 
-export const TranslatorMode: React.FC = () => {
+import React, { useState } from 'react';
+import { translateToStyle } from '../services/geminiService'; // Changed import
+import { CandidateProfile } from '../types';
+
+// We could pass the active profile here to translate specifically to THAT candidate's voice
+// For simplicity in this demo, we can assume it's passed or available. 
+// Ideally, App.tsx passes `activeProfile` here.
+
+// NOTE: Since I cannot change App.tsx signature for TranslatorMode in this single change block easily without modifying App first,
+// I will keep it functional but default to "Standard Political" or update it to accept props if I update App.
+// Let's assume we want to use the default 'Mariate' style if no profile is passed, but to do it right, 
+// let's update this component to accept the profile.
+
+interface Props {
+  activeProfile?: CandidateProfile; // Optional for now to prevent breaking if not passed immediately
+}
+
+export const TranslatorMode: React.FC<Props> = ({ activeProfile }) => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Fallback profile if none provided (backward compatibility during refactor)
+  const effectiveProfile = activeProfile || {
+    id: 'default',
+    name: 'Mariate',
+    role: 'Candidate',
+    styleDescription: 'Paisa, directa, geóloga, "sin filtro"',
+    knowledgeBase: '',
+    avatar: null,
+    themeColor: '#10B981'
+  };
 
   const handleTranslate = async () => {
     if (!inputText) return;
     setLoading(true);
     try {
-      const result = await translateToMariate(inputText);
+      const result = await translateToStyle(inputText, effectiveProfile);
       setOutputText(result);
     } catch (error) {
       console.error(error);
-      setOutputText("Error: Mariate is taking a nap. Try again.");
+      setOutputText("Error: AI Brain is taking a nap. Try again.");
     } finally {
       setLoading(false);
     }
@@ -23,8 +49,10 @@ export const TranslatorMode: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col">
        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white tracking-tight">MARIATE <span className="text-mariate-green">TRANSLATOR</span></h1>
-          <p className="text-slate-400 mt-1">Transform bureaucratic text into political gold.</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight uppercase">
+            {effectiveProfile.name} <span className="text-emerald-500">TRANSLATOR</span>
+          </h1>
+          <p className="text-slate-400 mt-1">Transform bureaucratic text into {effectiveProfile.name}'s political gold.</p>
        </div>
 
        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 min-h-0">
@@ -61,7 +89,7 @@ export const TranslatorMode: React.FC = () => {
           {/* Output Side */}
           <div className="flex flex-col bg-gradient-to-br from-mariate-panel to-slate-800 rounded-xl border border-emerald-900/50 shadow-xl overflow-hidden relative">
              <div className="bg-emerald-900/20 p-3 border-b border-emerald-900/30 flex justify-between items-center">
-                <span className="text-xs font-bold text-mariate-green uppercase tracking-wider">Output (Mariate Style)</span>
+                <span className="text-xs font-bold text-mariate-green uppercase tracking-wider">Output ({effectiveProfile.name} Style)</span>
                 {outputText && (
                    <button 
                     onClick={() => navigator.clipboard.writeText(outputText)}
@@ -105,7 +133,7 @@ export const TranslatorMode: React.FC = () => {
                  : 'bg-mariate-green text-white hover:bg-emerald-400 hover:shadow-emerald-500/20'
              }`}
           >
-             {loading ? 'MARIATE-IZING...' : '✨ MARIATE-IZE TEXT'}
+             {loading ? 'MAGIC...' : '✨ REWRITE TEXT'}
           </button>
        </div>
     </div>

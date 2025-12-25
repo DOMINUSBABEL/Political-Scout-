@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { AppMode, Language } from '../types';
+import { AppMode, Language, CandidateProfile } from '../types';
 import { t } from '../utils/translations';
 
 interface NavProps {
@@ -7,9 +8,10 @@ interface NavProps {
   setMode: (mode: AppMode) => void;
   lang: Language;
   setLang: (lang: Language) => void;
+  activeProfile: CandidateProfile;
 }
 
-export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang }) => {
+export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang, activeProfile }) => {
   return (
     <div className="w-20 md:w-72 h-screen fixed left-0 top-0 z-50 flex flex-col border-r border-white/5 bg-slate-950/70 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60 shadow-2xl">
       
@@ -31,12 +33,36 @@ export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang })
         </div>
       </div>
 
+      {/* ACTIVE PROFILE WIDGET (NEW) */}
+      <div className="px-4 pt-4">
+        <button 
+           onClick={() => setMode(AppMode.PROFILE)}
+           className="w-full bg-slate-900/50 hover:bg-slate-800 border border-white/5 rounded-xl p-3 flex items-center gap-3 transition-all group"
+        >
+           <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden border border-white/10 group-hover:border-emerald-500 transition-colors">
+              {activeProfile.avatar ? (
+                <img src={activeProfile.avatar} alt={activeProfile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-bold text-white" style={{ backgroundColor: activeProfile.themeColor }}>
+                   {activeProfile.name.charAt(0)}
+                </div>
+              )}
+           </div>
+           <div className="hidden md:block text-left">
+              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Active Agent</p>
+              <p className="text-white font-bold text-xs truncate max-w-[140px]">{activeProfile.name}</p>
+           </div>
+           <div className="hidden md:block ml-auto text-slate-500 group-hover:text-emerald-400">⚙️</div>
+        </button>
+      </div>
+
       {/* Navigation Items */}
-      <div className="flex-1 py-8 space-y-2 px-3">
+      <div className="flex-1 py-4 space-y-2 px-3">
         {[
           { id: AppMode.DEFENSE, label: t(lang, 'navDefense'), icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
           { id: AppMode.TRANSLATOR, label: t(lang, 'navTranslator'), icon: "M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" },
-          { id: AppMode.NETWORK, label: t(lang, 'navNetwork'), icon: "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" }
+          { id: AppMode.NETWORK, label: t(lang, 'navNetwork'), icon: "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" },
+          { id: AppMode.PROFILE, label: t(lang, 'navProfile'), icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" }
         ].map((item) => (
           <button
             key={item.id}

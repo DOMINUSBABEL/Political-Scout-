@@ -1,3 +1,4 @@
+
 import { Language } from '../types';
 
 export const translations = {
@@ -18,6 +19,7 @@ export const translations = {
     navDefense: "Defensa",
     navTranslator: "Traductor",
     navNetwork: "Redes & Datos",
+    navProfile: "Perfiles", // NEW
     footer: "Diseñado, desarrollado e implementado por Consultora Talleyrand",
     loginTitle: "ACCESO RESTRINGIDO",
     loginSubtitle: "Ingrese credenciales de seguridad",
@@ -27,7 +29,6 @@ export const translations = {
     riskHigh: "RIESGO CRÍTICO DETECTADO",
     riskLegal: "Aprobación Requerida: Equipo Legal",
     generatedStrategies: "ESTRATEGIAS GENERADAS",
-    // Network Mode
     netTitle: "INTELIGENCIA DE REDES",
     netSubtitle: "Análisis de Datos Masivos y Tendencias",
     uploadStats: "Cargar Base de Datos (CSV/JSON)",
@@ -39,12 +40,17 @@ export const translations = {
     trendsTitle: "TENDENCIAS DETECTADAS (IA)",
     recTitle: "RECOMENDACIONES ESTRATÉGICAS",
     graphTitle: "RENDIMIENTO POR PLATAFORMA",
-    // New Network Features
     downloadData: "DESCARGAR REPORTE",
     filterSentiment: "Filtrar por Sentimiento",
     filterAll: "Todo",
     errorFormat: "Error de Formato: Faltan columnas requeridas (Date, Platform, Impressions...).",
-    errorNoData: "El archivo no contiene datos válidos."
+    errorNoData: "El archivo no contiene datos válidos.",
+    // Profile Manager
+    profileTitle: "GESTIÓN DE CANDIDATOS",
+    profileSubtitle: "Configuración de Personalidad y Base de Conocimiento",
+    availableProfiles: "Perfiles Disponibles",
+    addProfile: "Nuevo Candidato",
+    createNewProfile: "Crear Nuevo Agente",
   },
   EN: {
     warRoomTitle: "WAR ROOM",
@@ -63,6 +69,7 @@ export const translations = {
     navDefense: "Defense",
     navTranslator: "Translator",
     navNetwork: "Network Data",
+    navProfile: "Profiles", // NEW
     footer: "Designed, developed and implemented by Consultora Talleyrand",
     loginTitle: "RESTRICTED ACCESS",
     loginSubtitle: "Enter security credentials",
@@ -72,7 +79,6 @@ export const translations = {
     riskHigh: "CRITICAL RISK DETECTED",
     riskLegal: "Approval Required: Legal Counsel",
     generatedStrategies: "GENERATED STRATEGIES",
-    // Network Mode
     netTitle: "NETWORK INTELLIGENCE",
     netSubtitle: "Big Data Analysis & Trends",
     uploadStats: "Upload Database (CSV/JSON)",
@@ -84,12 +90,17 @@ export const translations = {
     trendsTitle: "AI DETECTED TRENDS",
     recTitle: "STRATEGIC RECOMMENDATIONS",
     graphTitle: "PERFORMANCE BY PLATFORM",
-    // New Network Features
     downloadData: "DOWNLOAD REPORT",
     filterSentiment: "Filter by Sentiment",
     filterAll: "All",
     errorFormat: "Format Error: Missing required columns (Date, Platform, Impressions...).",
-    errorNoData: "File contains no valid data."
+    errorNoData: "File contains no valid data.",
+    // Profile Manager
+    profileTitle: "CANDIDATE MANAGEMENT",
+    profileSubtitle: "Personality & Knowledge Base Configuration",
+    availableProfiles: "Available Profiles",
+    addProfile: "New Candidate",
+    createNewProfile: "Create New Agent",
   },
   FR: {
     warRoomTitle: "SALLE DE GUERRE",
@@ -108,6 +119,7 @@ export const translations = {
     navDefense: "Défense",
     navTranslator: "Traducteur",
     navNetwork: "Réseaux & Données",
+    navProfile: "Profils", // NEW
     footer: "Conçu, développé et mis en œuvre par Consultora Talleyrand",
     loginTitle: "ACCÈS RESTREINT",
     loginSubtitle: "Entrez vos identifiants de sécurité",
@@ -117,7 +129,6 @@ export const translations = {
     riskHigh: "RISQUE CRITIQUE DÉTECTÉ",
     riskLegal: "Approbation Requise : Conseiller Juridique",
     generatedStrategies: "STRATÉGIES GÉNÉRÉES",
-    // Network Mode
     netTitle: "RENSEIGNEMENT RÉSEAU",
     netSubtitle: "Analyse Big Data et Tendances",
     uploadStats: "Télécharger Base de Données (CSV/JSON)",
@@ -129,12 +140,17 @@ export const translations = {
     trendsTitle: "TENDANCES DÉTECTÉES (IA)",
     recTitle: "RECOMMANDATIONS STRATÉGIQUES",
     graphTitle: "PERFORMANCE PAR PLATEFORME",
-    // New Network Features
     downloadData: "TÉLÉCHARGER RAPPORT",
     filterSentiment: "Filtrer par Sentiment",
     filterAll: "Tous",
     errorFormat: "Erreur de format : Colonnes requises manquantes (Date, Platform...).",
-    errorNoData: "Le fichier ne contient aucune donnée valide."
+    errorNoData: "Le fichier ne contient aucune donnée valide.",
+     // Profile Manager
+    profileTitle: "GESTION DES CANDIDATS",
+    profileSubtitle: "Configuration de la Personnalité et Base de Connaissances",
+    availableProfiles: "Profils Disponibles",
+    addProfile: "Nouveau Candidat",
+    createNewProfile: "Créer Nouvel Agent",
   },
   DE: {
     warRoomTitle: "LAGEZENTRUM",
@@ -153,6 +169,7 @@ export const translations = {
     navDefense: "Verteidigung",
     navTranslator: "Übersetzer",
     navNetwork: "Netzwerkdaten",
+    navProfile: "Profile", // NEW
     footer: "Entworfen, entwickelt und implementiert von Consultora Talleyrand",
     loginTitle: "ZUGANG BESCHRÄNKT",
     loginSubtitle: "Sicherheitsanmeldeinformationen eingeben",
@@ -162,7 +179,6 @@ export const translations = {
     riskHigh: "KRITISCHES RISIKO ERKANNT",
     riskLegal: "Genehmigung Erforderlich: Rechtsabteilung",
     generatedStrategies: "GENERIERTE STRATEGIEN",
-    // Network Mode
     netTitle: "NETZWERKINTELLIGENZ",
     netSubtitle: "Big Data Analyse & Trends",
     uploadStats: "Datenbank Hochladen (CSV/JSON)",
@@ -174,12 +190,17 @@ export const translations = {
     trendsTitle: "KI ERKANNTE TRENDS",
     recTitle: "STRATEGISCHE EMPFEHLUNGEN",
     graphTitle: "LEISTUNG NACH PLATTFORM",
-    // New Network Features
     downloadData: "BERICHT HERUNTERLADEN",
     filterSentiment: "Nach Stimmung filtern",
     filterAll: "Alle",
     errorFormat: "Formatfehler: Erforderliche Spalten fehlen (Date, Platform...).",
-    errorNoData: "Datei enthält keine gültigen Daten."
+    errorNoData: "Datei enthält keine gültigen Daten.",
+     // Profile Manager
+    profileTitle: "KANDIDATENMANAGEMENT",
+    profileSubtitle: "Persönlichkeits- und Wissensbasis-Konfiguration",
+    availableProfiles: "Verfügbare Profile",
+    addProfile: "Neuer Kandidat",
+    createNewProfile: "Neuen Agenten Erstellen",
   }
 };
 

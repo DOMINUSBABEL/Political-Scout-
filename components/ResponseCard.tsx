@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GeneratedResponse, ResponseTone } from '../types';
 
@@ -23,6 +24,10 @@ export const ResponseCard: React.FC<Props> = ({ response, index }) => {
         return { color: 'text-blue-400', border: 'border-blue-500', bg: 'hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]', icon: '📊' };
       case ResponseTone.EMPATICA: 
         return { color: 'text-purple-400', border: 'border-purple-500', bg: 'hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]', icon: '🤝' };
+      case ResponseTone.SATIRICA: 
+        return { color: 'text-pink-400', border: 'border-pink-500', bg: 'hover:shadow-[0_0_30px_rgba(236,72,153,0.1)]', icon: '🌶️' };
+      case ResponseTone.VIRAL: 
+        return { color: 'text-yellow-400', border: 'border-yellow-500', bg: 'hover:shadow-[0_0_30px_rgba(234,179,8,0.1)]', icon: '🔥' };
       default: 
         return { color: 'text-slate-400', border: 'border-slate-500', bg: '', icon: '🤖' };
     }
@@ -42,7 +47,7 @@ export const ResponseCard: React.FC<Props> = ({ response, index }) => {
               {style.icon}
             </div>
             <div>
-              <h3 className={`font-bold ${style.color} text-sm uppercase tracking-wider`}>{response.tone}</h3>
+              <h3 className={`font-bold ${style.color} text-sm uppercase tracking-wider truncate max-w-[120px]`}>{response.tone.split('/')[0]}</h3>
               <span className="text-[10px] text-slate-500 font-mono">CONFIDENCE: 98%</span>
             </div>
           </div>

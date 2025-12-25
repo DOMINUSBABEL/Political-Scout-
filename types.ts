@@ -1,7 +1,10 @@
+
 export enum ResponseTone {
   TECNICA = "Técnica/Geóloga",
   FRENTERA = "Frentera/Sin Filtro",
-  EMPATICA = "Maternal/Empática"
+  EMPATICA = "Maternal/Empática",
+  SATIRICA = "Satírica/Picante",
+  VIRAL = "Viral/Memeable"
 }
 
 export interface GeneratedResponse {
@@ -10,12 +13,23 @@ export interface GeneratedResponse {
   reasoning: string;
 }
 
+export interface CandidateProfile {
+  id: string;
+  name: string;
+  role: string; // e.g. "Candidate", "Spokesperson"
+  styleDescription: string; // The "Persona" for the prompt
+  knowledgeBase: string; // The specific context/proposals
+  avatar: string | null; // Base64 image
+  themeColor: string; // Hex code for UI accents
+}
+
 export interface AnalysisResult {
   sentiment: 'Negative' | 'Neutral' | 'Positive' | 'Troll';
   intent: string;
   riskLevel: 'Low' | 'Medium' | 'High';
   warningMessage?: string;
-  legalReviewRequested?: boolean; // New field
+  legalReviewRequested?: boolean; 
+  followUpSuggestions?: string[]; 
   responses: GeneratedResponse[];
 }
 
@@ -38,7 +52,8 @@ export interface ScrapedData {
 export enum AppMode {
   DEFENSE = 'defense',
   TRANSLATOR = 'translator',
-  NETWORK = 'network'
+  NETWORK = 'network',
+  PROFILE = 'profile'
 }
 
 export type Language = 'ES' | 'EN' | 'FR' | 'DE';

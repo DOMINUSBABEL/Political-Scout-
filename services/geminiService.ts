@@ -1,45 +1,40 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis } from "../types";
-
-// Simulated "Knowledge Base" (The PDF Context)
-const KNOWLEDGE_BASE = `
-CONTEXTO DE CANDIDATA (MARIATE MONTOYA):
-- Profesión: Geóloga.
-- Estilo: Paisa, directa, usa dichos ("Al marrano no lo capan dos veces"), anti-política tradicional.
-- Postura Minería: "Minería bien hecha no es minería ilegal". Defiende la extracción técnica de recursos para el desarrollo.
-- Postura Medio Ambiente: "Cuidar el páramo no es abandonarlo, es gestionarlo". Critica la hipocresía de ambientalistas de iPhone.
-- Apodo: "Cabra Loca" (ella lo abraza con orgullo).
-- Enemigos: Políticos tradicionales, burocracia, hipocresía.
-`;
-
-const SYSTEM_PROMPT = `
-ACTÚA COMO: María Teresa "Mariate" Montoya.
-Perfil: Geóloga, Paisa, Directa, Anti-política tradicional, "Cabra Loca".
-
-TU TAREA:
-Analizar posts de redes sociales (texto e imágenes) y generar respuestas.
-
-INSTRUCCIONES DE ESTILO:
-1. Usa tus muletillas clave: "¿Sí o no?", "Mijo/a", "Pues", "Verraquera", "Bacano", "Ojo pues".
-2. No suenes como una IA. Suena como una mujer paisa hablando desde su celular.
-3. Si te atacan, usa "Piel de cocodrilo". Devuelve el golpe con argumentos lógicos o ironía.
-4. Emojis permitidos: 🪨, 🐐, 🇨🇴, 💚.
-
-${KNOWLEDGE_BASE}
-`;
+import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile } from "../types";
 
 export const analyzeAndGenerate = async (
   author: string,
   postContent: string,
+  profile: CandidateProfile,
   imageContext?: { base64?: string; mimeType?: string },
   scoutVisualDescription?: string
 ): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+  // Dynamic System Prompt construction based on selected Profile
+  const SYSTEM_PROMPT = `
+ACTÚA COMO: ${profile.name}
+ROL: ${profile.role}
+PERFIL DE PERSONALIDAD Y ESTILO:
+${profile.styleDescription}
+
+BASE DE CONOCIMIENTO (CONTEXTO Y PROPUESTAS):
+${profile.knowledgeBase}
+
+TU TAREA:
+Analizar posts de redes sociales (texto e imágenes) y generar respuestas defendiendo tus posturas o proponiendo tus ideas.
+
+INSTRUCCIONES DE ESTILO:
+1. Adopta estrictamente el tono descrito en tu PERFIL.
+2. Usa la información de tu BASE DE CONOCIMIENTO para fundamentar tus respuestas. No inventes propuestas que no estén ahí.
+3. Si el tono es informal, no suenes como una IA, suena humano.
+4. Genera respuestas tácticas para redes sociales.
+`;
+
   let promptText = `
-  Analiza el siguiente post de redes sociales y genera 3 opciones de respuesta.
+  Analiza el siguiente post de redes sociales y genera 5 OPCIONES DE RESPUESTA distintas.
   
-  AUTOR: ${author}
+  AUTOR DEL POST: ${author}
   CONTENIDO (Texto detectado): "${postContent}"
   `;
 
@@ -48,8 +43,7 @@ export const analyzeAndGenerate = async (
   }
 
   if (scoutVisualDescription) {
-    promptText += `\nREPORTE DEL AGENTE SCOUT (Descripción Visual/Contexto): "${scoutVisualDescription}"
-    Usa este contexto visual para entender si es un meme, una burla sobre su apariencia, o un screenshot de texto.`;
+    promptText += `\nREPORTE DEL AGENTE SCOUT (Descripción Visual/Contexto): "${scoutVisualDescription}"`;
   }
 
   promptText += `
@@ -58,20 +52,23 @@ export const analyzeAndGenerate = async (
   - Si es 'High', el 'warningMessage' DEBE advertir: "TEMA LEGAL/SENSIBLE DETECTADO. NO RESPONDER SIN ABOGADO."
   - Si es un 'bait' o trampa evidente -> SET riskLevel = 'Medium'.
 
+  TAREA ADICIONAL (AGENTE FOLLOW-UP):
+  Sugiere 3 acciones de seguimiento inmediatas (Ej: "Monitorear palabras clave por 2h", "Preparar comunicado oficial", "Ignorar y silenciar cuenta").
+
   Formato de salida esperado (JSON):
   - sentiment: (Negative, Neutral, Positive, Troll)
   - intent: Breve descripción de la intención del autor (ataque, duda, apoyo).
   - riskLevel: (Low, Medium, High)
   - warningMessage: Mensaje OBLIGATORIO si RiskLevel es High o Medium.
-  - responses: Array de 3 objetos, cada uno con:
-    - tone: (Uno de: "Técnica/Geóloga", "Frentera/Sin Filtro", "Maternal/Empática")
+  - followUpSuggestions: Array de strings con 3 sugerencias tácticas.
+  - responses: Array de 5 objetos, cada uno con:
+    - tone: (Uno de: "Técnica/Geóloga", "Frentera/Sin Filtro", "Maternal/Empática", "Satírica/Picante", "Viral/Memeable")
     - content: El texto de la respuesta (Max 280 caracteres).
-    - reasoning: Por qué elegiste este ángulo.
+    - reasoning: Por qué elegiste este ángulo basado en tu perfil.
   `;
 
   const parts: any[] = [];
   
-  // Add Image Part if exists (Manual upload override)
   if (imageContext && imageContext.base64) {
     parts.push({
       inlineData: {
@@ -81,13 +78,12 @@ export const analyzeAndGenerate = async (
     });
   }
 
-  // Add Text Prompt
   parts.push({ text: promptText });
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: { parts }, // Pass parts array for multimodal
+      contents: { parts },
       config: {
         systemInstruction: SYSTEM_PROMPT,
         responseMimeType: "application/json",
@@ -98,12 +94,13 @@ export const analyzeAndGenerate = async (
             intent: { type: Type.STRING },
             riskLevel: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
             warningMessage: { type: Type.STRING },
+            followUpSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
             responses: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  tone: { type: Type.STRING, enum: [ResponseTone.TECNICA, ResponseTone.FRENTERA, ResponseTone.EMPATICA] },
+                  tone: { type: Type.STRING, enum: [ResponseTone.TECNICA, ResponseTone.FRENTERA, ResponseTone.EMPATICA, ResponseTone.SATIRICA, ResponseTone.VIRAL] },
                   content: { type: Type.STRING },
                   reasoning: { type: Type.STRING },
                 }
@@ -117,15 +114,12 @@ export const analyzeAndGenerate = async (
     const text = response.text;
     if (!text) throw new Error("No response from AI");
     
-    // Clean potential markdown delimiters
     let cleanText = text.trim();
     if (cleanText.startsWith("```")) {
       cleanText = cleanText.replace(/^```(json)?|```$/g, "");
     }
     
     const parsed = JSON.parse(cleanText);
-    
-    // Safety check: ensure 'responses' array exists
     if (!parsed.responses || !Array.isArray(parsed.responses)) {
         parsed.responses = [];
     }
@@ -138,52 +132,46 @@ export const analyzeAndGenerate = async (
   }
 };
 
-export const translateToMariate = async (text: string): Promise<string> => {
+export const translateToStyle = async (text: string, profile: CandidateProfile): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-  Traduce el siguiente texto corporativo/aburrido al estilo de Mariate (Paisa, directa, geóloga, "sin filtro").
+  Traduce el siguiente texto corporativo/aburrido al estilo de ${profile.name} (${profile.styleDescription}).
+  Usa su base de conocimiento si es relevante: ${profile.knowledgeBase.substring(0, 500)}...
   
   TEXTO ORIGINAL: "${text}"
   
-  Solo devuelve el texto traducido, nada más.
+  Solo devuelve el texto traducido con su personalidad, nada más.
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-      }
     });
     return response.text || "Error generating translation.";
   } catch (error) {
     console.error("Gemini Translator Error:", error);
-    return "Error connecting to Mariate's brain.";
+    return "Error connecting to AI brain.";
   }
 };
 
-/**
- * NEW AGENT: The Network Strategist
- * Analyzes CSV/JSON data of social performance and gives insights.
- */
 export const analyzeNetworkStats = async (stats: NetworkStat[]): Promise<NetworkAgentAnalysis> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const statsSummary = JSON.stringify(stats.slice(0, 20)); // Limit context size
+  const statsSummary = JSON.stringify(stats.slice(0, 30)); 
 
   const prompt = `
-    Eres "El Estratega", un experto en datos para campañas políticas digitales.
+    Eres "El Estratega de Campaña" (Campaign Manager Agent).
     
-    Analiza esta matriz de datos de redes sociales (Muestra de las últimas publicaciones):
+    Analiza esta matriz de datos de redes sociales y genera un REPORTE EJECUTIVO DETALLADO:
     ${statsSummary}
     
-    1. Identifica qué temas (top_topic) están funcionando mejor.
+    1. Identifica qué temas (top_topic) están funcionando mejor y por qué.
     2. Detecta qué plataforma tiene mejor engagement.
-    3. Dame 3 recomendaciones tácticas para mejorar la próxima semana.
+    3. Dame 3 recomendaciones tácticas CONCRETAS para la próxima semana.
     
-    Devuelve JSON.
+    Devuelve JSON estructurado.
   `;
 
   try {
