@@ -26,61 +26,90 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
 
   // Robust CSV Parser
   const parseCSV = (text: string): NetworkStat[] => {
-    const lines = text.split('\n').filter(l => l.trim() !== '');
+    // Handle different line endings
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
     if (lines.length < 2) throw new Error("File too short");
 
-    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+    // Detect delimiter (comma or semicolon)
+    const firstLine = lines[0];
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semiCount = (firstLine.match(/;/g) || []).length;
+    const delimiter = semiCount > commaCount ? ';' : ',';
+
+    const headers = firstLine.toLowerCase().split(delimiter).map(h => h.trim().replace(/['"]+/g, ''));
     
+    // Enhanced Column Mapping with synonyms
     const colMap = {
-      date: headers.findIndex(h => h.includes('date') || h.includes('fecha')),
-      platform: headers.findIndex(h => h.includes('platform') || h.includes('plataforma')),
-      impressions: headers.findIndex(h => h.includes('impression') || h.includes('impresiones') || h.includes('views')),
-      engagement: headers.findIndex(h => h.includes('engagement') || h.includes('interacción')),
-      sentiment: headers.findIndex(h => h.includes('sentiment') || h.includes('sentimiento')),
-      topic: headers.findIndex(h => h.includes('topic') || h.includes('tema'))
+      date: headers.findIndex(h => h.includes('date') || h.includes('fecha') || h.includes('time') || h.includes('día')),
+      platform: headers.findIndex(h => h.includes('platform') || h.includes('plataforma') || h.includes('network') || h.includes('red') || h.includes('source')),
+      impressions: headers.findIndex(h => h.includes('impression') || h.includes('impresiones') || h.includes('views') || h.includes('vistas') || h.includes('reach') || h.includes('alcance')),
+      engagement: headers.findIndex(h => h.includes('engagement') || h.includes('interacción') || h.includes('likes') || h.includes('me gusta')),
+      sentiment: headers.findIndex(h => h.includes('sentiment') || h.includes('sentimiento') || h.includes('score')),
+      topic: headers.findIndex(h => h.includes('topic') || h.includes('tema') || h.includes('category') || h.includes('categoría'))
     };
 
-    if (colMap.date === -1 || colMap.impressions === -1 || colMap.sentiment === -1) {
-       const isFirstLineData = !isNaN(Date.parse(lines[0].split(',')[0]));
-       
-       if (isFirstLineData) {
-          colMap.date = 0;
-          colMap.platform = 1;
-          colMap.impressions = 2;
-          colMap.engagement = 3;
-          colMap.sentiment = 4;
-          colMap.topic = 5;
-       } else {
-         throw new Error("Missing Columns");
-       }
+    // Fallback: If no 'date' header found, check if first column of second row looks like a date
+    if (colMap.date === -1) {
+        const secondLineCols = lines[1].split(delimiter);
+        if (secondLineCols.length > 0 && !isNaN(Date.parse(secondLineCols[0].replace(/['"]+/g, '')))) {
+            colMap.date = 0;
+        } else {
+            throw new Error("Missing Column: Date/Fecha (Required)");
+        }
     }
 
-    const startIndex = (colMap.date !== -1 && !isNaN(Date.parse(lines[0].split(',')[colMap.date]))) ? 0 : 1;
+    // Allow parsing even if Sentiment is missing (default to 50)
+    // We strictly need at least Impressions OR Engagement to make charts useful
+    if (colMap.impressions === -1 && colMap.engagement === -1) {
+        throw new Error("Missing Data: Need 'Impressions' or 'Engagement' column.");
+    }
+
+    const startIndex = 1; 
 
     const parsed: NetworkStat[] = [];
     
     for (let i = startIndex; i < lines.length; i++) {
-        const row = lines[i].split(',');
-        if (row.length < 5) continue;
+        const row = lines[i].split(delimiter);
+        if (row.length < 2) continue;
 
-        const dateStr = row[colMap.date]?.trim();
-        const platStr = row[colMap.platform]?.trim() || 'Unknown';
-        const impVal = parseInt(row[colMap.impressions] || '0');
-        const engVal = parseFloat(row[colMap.engagement] || '0');
-        const sentVal = parseInt(row[colMap.sentiment] || '50');
-        const topicStr = row[colMap.topic]?.trim() || 'General';
+        // Extract Date
+        const rawDate = row[colMap.date]?.trim().replace(/['"]+/g, '');
+        if (!rawDate || isNaN(Date.parse(rawDate))) continue; // Skip invalid dates
 
-        if (isNaN(impVal) || isNaN(sentVal)) continue;
+        // Extract Platform
+        const platStr = colMap.platform !== -1 ? row[colMap.platform]?.trim().replace(/['"]+/g, '') : 'Unknown';
+        
+        // Extract Metrics (sanitize non-numeric chars)
+        let impVal = 0;
+        if (colMap.impressions !== -1) {
+            impVal = parseInt(row[colMap.impressions]?.replace(/[^0-9]/g, '') || '0');
+        }
+
+        let engVal = 0;
+        if (colMap.engagement !== -1) {
+            engVal = parseFloat(row[colMap.engagement]?.replace(/[^0-9.]/g, '') || '0');
+        }
+
+        // Extract Sentiment (Default 50)
+        let sentVal = 50;
+        if (colMap.sentiment !== -1) {
+            const val = row[colMap.sentiment]?.replace(/[^0-9]/g, '');
+            sentVal = val ? parseInt(val) : 50;
+        }
+
+        const topicStr = colMap.topic !== -1 ? row[colMap.topic]?.trim().replace(/['"]+/g, '') : 'General';
 
         parsed.push({
-            date: dateStr,
-            platform: platStr,
-            impressions: impVal,
-            engagement: engVal,
-            sentiment_score: sentVal,
-            top_topic: topicStr
+            date: rawDate,
+            platform: platStr || 'Unknown',
+            impressions: isNaN(impVal) ? 0 : impVal,
+            engagement: isNaN(engVal) ? 0 : engVal,
+            sentiment_score: isNaN(sentVal) ? 50 : sentVal,
+            top_topic: topicStr || 'General'
         });
     }
+
+    if (parsed.length === 0) throw new Error("No valid data rows could be parsed.");
     return parsed;
   };
 
@@ -123,9 +152,9 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
         setProgress(100);
         setTimeout(() => setLoading(false), 500);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Parse Error", err);
-        setErrorMessage(t(lang, 'errorFormat'));
+        setErrorMessage(err.message || t(lang, 'errorFormat'));
         setLoading(false);
       }
     };
