@@ -38,7 +38,13 @@ export const translations = {
     kpiSent: "Sentimiento +",
     trendsTitle: "TENDENCIAS DETECTADAS (IA)",
     recTitle: "RECOMENDACIONES ESTRATÉGICAS",
-    graphTitle: "RENDIMIENTO POR PLATAFORMA"
+    graphTitle: "RENDIMIENTO POR PLATAFORMA",
+    // New Network Features
+    downloadData: "DESCARGAR REPORTE",
+    filterSentiment: "Filtrar por Sentimiento",
+    filterAll: "Todo",
+    errorFormat: "Error de Formato: Faltan columnas requeridas (Date, Platform, Impressions...).",
+    errorNoData: "El archivo no contiene datos válidos."
   },
   EN: {
     warRoomTitle: "WAR ROOM",
@@ -77,7 +83,13 @@ export const translations = {
     kpiSent: "Sentiment +",
     trendsTitle: "AI DETECTED TRENDS",
     recTitle: "STRATEGIC RECOMMENDATIONS",
-    graphTitle: "PERFORMANCE BY PLATFORM"
+    graphTitle: "PERFORMANCE BY PLATFORM",
+    // New Network Features
+    downloadData: "DOWNLOAD REPORT",
+    filterSentiment: "Filter by Sentiment",
+    filterAll: "All",
+    errorFormat: "Format Error: Missing required columns (Date, Platform, Impressions...).",
+    errorNoData: "File contains no valid data."
   },
   FR: {
     warRoomTitle: "SALLE DE GUERRE",
@@ -116,7 +128,13 @@ export const translations = {
     kpiSent: "Sentiment +",
     trendsTitle: "TENDANCES DÉTECTÉES (IA)",
     recTitle: "RECOMMANDATIONS STRATÉGIQUES",
-    graphTitle: "PERFORMANCE PAR PLATEFORME"
+    graphTitle: "PERFORMANCE PAR PLATEFORME",
+    // New Network Features
+    downloadData: "TÉLÉCHARGER RAPPORT",
+    filterSentiment: "Filtrer par Sentiment",
+    filterAll: "Tous",
+    errorFormat: "Erreur de format : Colonnes requises manquantes (Date, Platform...).",
+    errorNoData: "Le fichier ne contient aucune donnée valide."
   },
   DE: {
     warRoomTitle: "LAGEZENTRUM",
@@ -155,7 +173,13 @@ export const translations = {
     kpiSent: "Stimmung +",
     trendsTitle: "KI ERKANNTE TRENDS",
     recTitle: "STRATEGISCHE EMPFEHLUNGEN",
-    graphTitle: "LEISTUNG NACH PLATTFORM"
+    graphTitle: "LEISTUNG NACH PLATTFORM",
+    // New Network Features
+    downloadData: "BERICHT HERUNTERLADEN",
+    filterSentiment: "Nach Stimmung filtern",
+    filterAll: "Alle",
+    errorFormat: "Formatfehler: Erforderliche Spalten fehlen (Date, Platform...).",
+    errorNoData: "Datei enthält keine gültigen Daten."
   }
 };
 
