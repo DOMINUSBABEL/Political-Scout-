@@ -38,3 +38,5 @@ export enum AppMode {
   DEFENSE = 'defense',
   TRANSLATOR = 'translator'
 }
+
+export type Language = 'ES' | 'EN' | 'FR' | 'DE';

@@ -1,10 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { analyzeAndGenerate } from '../services/geminiService';
 import { scoutUrl, describeUploadedMedia } from '../services/scoutService';
-import { AnalysisResult } from '../types';
+import { AnalysisResult, Language } from '../types';
 import { ResponseCard } from './ResponseCard';
+import { t } from '../utils/translations';
 
-export const DefenseMode: React.FC = () => {
+interface DefenseModeProps {
+  lang: Language;
+}
+
+export const DefenseMode: React.FC<DefenseModeProps> = ({ lang }) => {
   const [url, setUrl] = useState('');
   const [postContent, setPostContent] = useState('');
   const [author, setAuthor] = useState('');
@@ -116,71 +121,78 @@ export const DefenseMode: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Header */}
-      <div className="flex justify-between items-end border-b border-slate-700 pb-4">
+      <div className="flex justify-between items-end border-b border-slate-700/50 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">WAR ROOM <span className="text-mariate-green">DASHBOARD</span></h1>
-          <p className="text-slate-400 mt-1">Reputation Defense & Crisis Management System</p>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight uppercase">
+            {t(lang, 'warRoomTitle')} <span className="text-mariate-green">DASHBOARD</span>
+          </h1>
+          <p className="text-slate-400 mt-1 font-light tracking-wide">{t(lang, 'dashboardSubtitle')}</p>
         </div>
         <button 
           onClick={fillSimulationData}
-          className="text-xs text-slate-500 hover:text-mariate-green underline cursor-pointer"
+          className="text-xs text-slate-500 hover:text-mariate-green underline cursor-pointer transition-colors"
         >
-          [Load Simulation URL]
+          {t(lang, 'loadSimulation')}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* LEFT COLUMN: Input & Scout Controls */}
-        <div className="lg:col-span-2 bg-mariate-panel rounded-xl p-6 border border-slate-700 shadow-2xl relative overflow-hidden">
-          <form onSubmit={handleAnalyze} className="space-y-6 relative z-10">
+        <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50 shadow-2xl relative overflow-hidden group hover:border-slate-600 transition-all">
+           {/* Decorative sheen */}
+           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all"></div>
+
+          <form onSubmit={handleAnalyze} className="space-y-8 relative z-10">
             
             {/* URL & Scout Trigger */}
-            <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target URL (Scraper Target)</label>
-                <div className="flex gap-2">
+            <div className="bg-slate-950/50 p-5 rounded-xl border border-slate-800">
+               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t(lang, 'targetUrl')}</label>
+                <div className="flex gap-3">
                     <input
                         type="text"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder="https://twitter.com/..."
-                        className="flex-1 bg-mariate-dark border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-mariate-green outline-none transition-all"
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all placeholder-slate-600"
                     />
                     <button 
                       type="button" 
                       onClick={handleScoutTrigger}
                       disabled={scouting || loading}
-                      className={`px-4 rounded font-bold transition-all ${scouting ? 'bg-slate-600 text-slate-400' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg'}`}
-                      title="Deploy Scout Agent"
+                      className={`px-5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all border ${
+                        scouting 
+                          ? 'bg-slate-800 border-slate-700 text-slate-400' 
+                          : 'bg-blue-900/30 border-blue-500/50 text-blue-400 hover:bg-blue-900/50 hover:text-white hover:border-blue-400 shadow-lg shadow-blue-900/20'
+                      }`}
                     >
-                        {scouting ? '🔍 SCOUTING...' : '🕵️ DEPLOY SCOUT'}
+                        {scouting ? t(lang, 'scouting') : t(lang, 'scoutBtn')}
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                {/* Manual/Extracted Data */}
-               <div className="space-y-4">
+               <div className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Author Handle</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t(lang, 'authorHandle')}</label>
                     <input
                       type="text"
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
                       placeholder="@username"
-                      className="w-full bg-mariate-dark border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-mariate-green outline-none transition-all"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all placeholder-slate-600"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Content (Text)
+                  <div className="flex flex-col h-full">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      {t(lang, 'extractedContent')}
                     </label>
                     <textarea
                       value={postContent}
                       onChange={(e) => setPostContent(e.target.value)}
-                      placeholder="Waiting for Scout extraction..."
-                      rows={4}
-                      className="w-full bg-mariate-dark border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-mariate-green outline-none transition-all font-mono text-sm"
+                      placeholder="..."
+                      className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white focus:border-mariate-green focus:ring-1 focus:ring-mariate-green outline-none transition-all font-mono text-sm min-h-[120px]"
                     />
                   </div>
                </div>
@@ -188,13 +200,13 @@ export const DefenseMode: React.FC = () => {
                {/* Visual Evidence Area */}
                <div className="space-y-4">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                     Visual Evidence (Scout Vision)
+                     {t(lang, 'visualScout')}
                   </label>
                   
                   {/* Upload Box */}
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all h-32 ${selectedImage ? 'border-mariate-green bg-mariate-green/10' : 'border-slate-600 hover:border-slate-400 hover:bg-slate-800'}`}
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all h-36 ${selectedImage ? 'border-mariate-green bg-emerald-900/10' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/50'}`}
                   >
                      <input 
                         type="file" 
@@ -208,58 +220,75 @@ export const DefenseMode: React.FC = () => {
                            <img 
                               src={`data:${imageMime};base64,${selectedImage}`} 
                               alt="Preview" 
-                              className="max-h-full max-w-full object-contain" 
+                              className="max-h-full max-w-full object-contain rounded" 
                            />
-                           <span className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md" onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setScoutVisualDescription(''); }}>X</span>
+                           <button 
+                             type="button"
+                             className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-full shadow-md flex items-center justify-center font-bold text-xs" 
+                             onClick={(e) => { e.stopPropagation(); setSelectedImage(null); setScoutVisualDescription(''); }}>
+                             ×
+                           </button>
                         </div>
                      ) : (
                         <>
-                           <span className="text-2xl mb-1">📷</span>
-                           <span className="text-xs text-slate-400 text-center">Upload Screenshot</span>
+                           <span className="text-3xl mb-2 opacity-50">📷</span>
+                           <span className="text-xs text-slate-500 font-medium text-center">{t(lang, 'uploadPlaceholder')}</span>
                         </>
                      )}
                   </div>
 
                   {/* Visual Description Text */}
-                  <div className="bg-slate-800 p-3 rounded border border-slate-700 h-32 overflow-y-auto">
-                    <span className="text-xs text-slate-500 font-bold block mb-1">AI VISUAL ANALYSIS:</span>
-                    <p className="text-xs text-slate-300 font-mono">
-                      {scoutVisualDescription || (scouting ? "Scout is looking..." : "No visual context yet.")}
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 h-32 overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-mariate-green animate-pulse"></div>
+                        <span className="text-[10px] text-mariate-green font-bold uppercase tracking-wider">Gemini Vision Analysis</span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-mono leading-relaxed">
+                      {scoutVisualDescription || (scouting ? t(lang, 'scouting') : "Waiting for visual input...")}
                     </p>
                   </div>
                </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="pt-4 border-t border-slate-800">
               <button
                 type="submit"
                 disabled={loading || scouting}
-                className={`w-full md:w-auto px-8 py-3 rounded-lg font-bold text-white shadow-lg transition-all transform hover:scale-105 flex items-center justify-center ${
-                  loading ? 'bg-slate-600 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+                className={`w-full py-4 rounded-xl font-bold text-sm tracking-widest text-white shadow-lg transition-all transform hover:scale-[1.01] flex items-center justify-center uppercase ${
+                  loading 
+                  ? 'bg-slate-700 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 shadow-emerald-900/40'
                 }`}
               >
-                {loading ? 'ANALYZING THREAT...' : '⚡ GENERATE RESPONSE STRATEGY'}
+                {loading ? t(lang, 'analyzing') : `⚡ ${t(lang, 'analyzeBtn')}`}
               </button>
             </div>
           </form>
-          {error && <p className="text-red-400 mt-2 text-sm text-center font-bold bg-red-900/20 p-2 rounded">{error}</p>}
+          {error && <div className="mt-4 p-3 bg-red-900/20 border border-red-800/50 rounded-lg text-red-400 text-sm text-center font-bold">{error}</div>}
         </div>
 
         {/* RIGHT COLUMN: Scout Logs */}
-        <div className="bg-black/40 rounded-xl border border-slate-700 p-4 font-mono text-xs flex flex-col h-full max-h-[600px]">
-          <h3 className="text-slate-400 font-bold mb-3 border-b border-slate-800 pb-2">SYSTEM LOGS [SCOUT AGENT]</h3>
-          <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
-            {scoutLogs.length === 0 && <span className="text-slate-600 italic">System ready. Waiting for target...</span>}
+        <div className="bg-black/60 backdrop-blur-md rounded-2xl border border-slate-700/50 p-5 font-mono text-xs flex flex-col h-full max-h-[600px] shadow-xl">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+             <h3 className="text-slate-400 font-bold uppercase tracking-wider">{t(lang, 'logsTitle')}</h3>
+             <div className="flex space-x-1">
+                 <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                 <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
+             </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+            {scoutLogs.length === 0 && <span className="text-slate-600 italic block py-4 text-center">System standby.</span>}
             {scoutLogs.map((log, i) => (
-              <div key={i} className="flex gap-2 animate-fade-in">
-                <span className="text-slate-600">[{new Date().toLocaleTimeString()}]</span>
-                <span className={log.includes("🔴") ? "text-red-400" : log.includes("✅") ? "text-mariate-green" : "text-blue-300"}>
+              <div key={i} className="flex gap-3 animate-fade-in border-l-2 border-slate-800 pl-3 py-1 hover:border-slate-600 transition-colors">
+                <span className="text-slate-600 select-none">[{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}]</span>
+                <span className={`leading-relaxed ${log.includes("🔴") ? "text-red-400 font-bold" : log.includes("✅") ? "text-emerald-400 font-bold" : "text-blue-300"}`}>
                   {log}
                 </span>
               </div>
             ))}
             {(scouting || loading) && (
-              <div className="animate-pulse text-mariate-green">_ Processing...</div>
+              <div className="animate-pulse text-mariate-green mt-2 pl-3">_</div>
             )}
           </div>
         </div>
@@ -267,62 +296,63 @@ export const DefenseMode: React.FC = () => {
 
       {/* Results Section */}
       {result && (
-        <div className="space-y-6 animate-fade-in-up mt-8 border-t border-slate-700 pt-8">
+        <div className="space-y-8 animate-fade-in-up mt-12 border-t border-slate-800 pt-10">
           
           {/* HIGH RISK BANNER */}
           {result.riskLevel === 'High' && (
-            <div className="bg-red-900 border-l-8 border-red-500 p-6 rounded shadow-2xl animate-pulse flex items-start space-x-4">
-              <span className="text-4xl">🚨</span>
-              <div>
-                <h3 className="text-red-100 font-extrabold text-xl tracking-wider">CRITICAL RISK DETECTED</h3>
-                <p className="text-red-200 mt-1 text-lg font-medium">
-                    {result.warningMessage || "Legal or sensitive topic detected. Consult legal team before responding."}
+            <div className="bg-red-950/40 border-l-4 border-red-500 p-8 rounded-r-xl shadow-2xl flex items-start space-x-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-red-500/5 animate-pulse"></div>
+              <span className="text-5xl relative z-10">🚨</span>
+              <div className="relative z-10">
+                <h3 className="text-red-400 font-black text-2xl tracking-widest uppercase mb-2">{t(lang, 'riskHigh')}</h3>
+                <p className="text-red-100 text-lg font-medium leading-relaxed">
+                    "{result.warningMessage || "Legal or sensitive topic detected. Consult legal team before responding."}"
                 </p>
-                <div className="mt-3">
-                   <span className="bg-red-800 text-red-100 text-xs px-2 py-1 rounded font-bold uppercase">Approval Required: Legal Counsel</span>
+                <div className="mt-4 inline-block">
+                   <span className="bg-red-900/80 border border-red-700 text-red-200 text-xs px-3 py-1.5 rounded uppercase font-bold tracking-wider">{t(lang, 'riskLegal')}</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Analysis Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-mariate-panel border border-slate-700 rounded-lg p-4 flex flex-col justify-center items-center">
-              <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">SENTIMENT</span>
-              <span className={`text-xl font-bold ${
+          {/* Analysis KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-center items-center hover:border-slate-600 transition-colors group">
+              <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mb-2 group-hover:text-emerald-500 transition-colors">SENTIMENT</span>
+              <span className={`text-2xl font-black tracking-tight ${
                 result.sentiment === 'Negative' ? 'text-red-400' : 
-                result.sentiment === 'Positive' ? 'text-green-400' : 'text-blue-400'
+                result.sentiment === 'Positive' ? 'text-emerald-400' : 'text-blue-400'
               }`}>
                 {result.sentiment.toUpperCase()}
               </span>
             </div>
-            <div className="bg-mariate-panel border border-slate-700 rounded-lg p-4 flex flex-col justify-center items-center">
-              <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">INTENT</span>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-center items-center hover:border-slate-600 transition-colors group">
+              <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mb-2 group-hover:text-emerald-500 transition-colors">INTENT</span>
               <span className="text-xl font-bold text-white text-center">{result.intent}</span>
             </div>
-            <div className={`border rounded-lg p-4 flex flex-col justify-center items-center ${
-              result.riskLevel === 'High' ? 'bg-red-900/40 border-red-500' : 
-              result.riskLevel === 'Medium' ? 'bg-yellow-900/30 border-yellow-500' : 
-              'bg-green-900/30 border-green-500'
+            <div className={`border rounded-xl p-6 flex flex-col justify-center items-center transition-all ${
+              result.riskLevel === 'High' ? 'bg-red-900/20 border-red-500/50' : 
+              result.riskLevel === 'Medium' ? 'bg-yellow-900/20 border-yellow-500/50' : 
+              'bg-emerald-900/20 border-emerald-500/50'
             }`}>
-              <span className="text-xs text-slate-400 uppercase tracking-widest font-bold">RISK LEVEL</span>
-              <span className={`text-xl font-bold ${
+              <span className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-2">RISK LEVEL</span>
+              <span className={`text-2xl font-black tracking-tight ${
                  result.riskLevel === 'High' ? 'text-red-500' : 
                  result.riskLevel === 'Medium' ? 'text-yellow-500' : 
-                 'text-green-500'
+                 'text-emerald-500'
               }`}>
                 {result.riskLevel.toUpperCase()}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4 py-2">
-             <div className="h-px bg-slate-700 flex-1"></div>
-             <span className="text-slate-500 text-sm font-mono font-bold tracking-widest">GENERATED STRATEGIES</span>
-             <div className="h-px bg-slate-700 flex-1"></div>
+          <div className="flex items-center space-x-6 py-4">
+             <div className="h-px bg-slate-800 flex-1"></div>
+             <span className="text-slate-500 text-xs font-bold tracking-[0.25em] uppercase">{t(lang, 'generatedStrategies')}</span>
+             <div className="h-px bg-slate-800 flex-1"></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12">
             {result.responses.map((response, idx) => (
               <ResponseCard key={idx} response={response} index={idx} />
             ))}
