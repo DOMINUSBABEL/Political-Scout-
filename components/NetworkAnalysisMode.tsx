@@ -25,8 +25,18 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Filters
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilterType>('ALL');
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
+  const [filterAge, setFilterAge] = useState<string>('ALL');
+  const [filterGender, setFilterGender] = useState<string>('ALL');
+  const [filterInterest, setFilterInterest] = useState<string>('ALL');
+
+  // Available Filter Options (Dynamic)
+  const [availableAges, setAvailableAges] = useState<string[]>([]);
+  const [availableGenders, setAvailableGenders] = useState<string[]>([]);
+  const [availableInterests, setAvailableInterests] = useState<string[]>([]);
 
   // Live Trend Scan State
   const [trendDate, setTrendDate] = useState(new Date().toISOString().split('T')[0]);
@@ -54,7 +64,11 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
       impressions: headers.findIndex(h => h.includes('impression') || h.includes('impresiones') || h.includes('views') || h.includes('vistas') || h.includes('reach') || h.includes('alcance')),
       engagement: headers.findIndex(h => h.includes('engagement') || h.includes('interacción') || h.includes('likes') || h.includes('me gusta')),
       sentiment: headers.findIndex(h => h.includes('sentiment') || h.includes('sentimiento') || h.includes('score')),
-      topic: headers.findIndex(h => h.includes('topic') || h.includes('tema') || h.includes('category') || h.includes('categoría'))
+      topic: headers.findIndex(h => h.includes('topic') || h.includes('tema') || h.includes('category') || h.includes('categoría')),
+      // Demographics
+      age: headers.findIndex(h => h.includes('age') || h.includes('edad') || h.includes('rango')),
+      gender: headers.findIndex(h => h.includes('gender') || h.includes('género') || h.includes('sexo')),
+      interest: headers.findIndex(h => h.includes('interest') || h.includes('interés') || h.includes('gustos'))
     };
 
     // Fallback: If no 'date' header found, check if first column of second row looks like a date
@@ -107,6 +121,11 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
         }
 
         const topicStr = colMap.topic !== -1 ? row[colMap.topic]?.trim().replace(/['"]+/g, '') : 'General';
+        
+        // Extract Optional Demographics
+        const ageVal = colMap.age !== -1 ? row[colMap.age]?.trim().replace(/['"]+/g, '') : undefined;
+        const genderVal = colMap.gender !== -1 ? row[colMap.gender]?.trim().replace(/['"]+/g, '') : undefined;
+        const interestVal = colMap.interest !== -1 ? row[colMap.interest]?.trim().replace(/['"]+/g, '') : undefined;
 
         parsed.push({
             date: rawDate,
@@ -114,7 +133,10 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
             impressions: isNaN(impVal) ? 0 : impVal,
             engagement: isNaN(engVal) ? 0 : engVal,
             sentiment_score: isNaN(sentVal) ? 50 : sentVal,
-            top_topic: topicStr || 'General'
+            top_topic: topicStr || 'General',
+            age_group: ageVal,
+            gender: genderVal,
+            interest_category: interestVal
         });
     }
 
@@ -130,6 +152,10 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
     setProgress(10);
     setAnalysis(null);
     setErrorMessage(null);
+    // Reset filters
+    setFilterAge('ALL');
+    setFilterGender('ALL');
+    setFilterInterest('ALL');
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -153,6 +179,16 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
 
         parsedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setStats(parsedData);
+        
+        // Extract available filters options
+        const ages = Array.from(new Set(parsedData.map(d => d.age_group).filter(Boolean))) as string[];
+        const genders = Array.from(new Set(parsedData.map(d => d.gender).filter(Boolean))) as string[];
+        const interests = Array.from(new Set(parsedData.map(d => d.interest_category).filter(Boolean))) as string[];
+        
+        setAvailableAges(ages);
+        setAvailableGenders(genders);
+        setAvailableInterests(interests);
+
         setProgress(60);
         
         const result = await analyzeNetworkStats(parsedData);
@@ -204,10 +240,13 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
     
     const platforms = ['TikTok', 'Instagram', 'X', 'Facebook'];
     const topics = ['Minería', 'Seguridad', 'Movilidad', 'Educación', 'Salud'];
+    const ages = ['18-24', '25-34', '35-44', '45+'];
+    const genders = ['M', 'F'];
+    const interests = ['Tecnología', 'Política', 'Deportes', 'Música'];
     
-    const demoData: NetworkStat[] = Array.from({ length: 25 }).map((_, i) => {
+    const demoData: NetworkStat[] = Array.from({ length: 40 }).map((_, i) => {
       const date = new Date();
-      date.setDate(date.getDate() - (25 - i));
+      date.setDate(date.getDate() - (40 - i));
       
       return {
         date: date.toISOString().split('T')[0],
@@ -215,10 +254,17 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
         impressions: 2000 + Math.floor(Math.random() * 15000),
         engagement: 1.5 + Math.random() * 6.5,
         sentiment_score: 20 + Math.floor(Math.random() * 80),
-        top_topic: topics[Math.floor(Math.random() * topics.length)]
+        top_topic: topics[Math.floor(Math.random() * topics.length)],
+        age_group: ages[Math.floor(Math.random() * ages.length)],
+        gender: genders[Math.floor(Math.random() * genders.length)],
+        interest_category: interests[Math.floor(Math.random() * interests.length)]
       };
     });
     
+    setAvailableAges(ages);
+    setAvailableGenders(genders);
+    setAvailableInterests(interests);
+
     setProgress(50);
     setStats(demoData);
     
@@ -263,11 +309,22 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
           filtered = filtered.filter(s => s.platform === filterPlatform);
       }
 
+      // Demographics Filters
+      if (filterAge !== 'ALL') {
+          filtered = filtered.filter(s => s.age_group === filterAge);
+      }
+      if (filterGender !== 'ALL') {
+          filtered = filtered.filter(s => s.gender === filterGender);
+      }
+      if (filterInterest !== 'ALL') {
+          filtered = filtered.filter(s => s.interest_category === filterInterest);
+      }
+
       return filtered;
-  }, [stats, sentimentFilter, filterPlatform]);
+  }, [stats, sentimentFilter, filterPlatform, filterAge, filterGender, filterInterest]);
 
   const handleLegendClick = (e: any) => {
-      const platformName = e.value; // The platform name usually comes in 'value' or 'id'
+      const platformName = e.value; 
       if (platformName) {
           setFilterPlatform(prev => prev === platformName ? null : platformName);
       }
@@ -358,41 +415,90 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                 <div className="h-64 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center text-slate-600 bg-black/20 mx-4 md:mx-0">
                 <span className="text-5xl mb-4 opacity-20">📊</span>
                 <p className="font-medium text-center px-4 tracking-wider uppercase text-xs">{t(lang, 'dropFile')}</p>
-                <p className="text-[10px] mt-2 opacity-50 font-mono">CSV: Date, Platform, Impressions, Engagement, Sentiment, Topic</p>
+                <p className="text-[10px] mt-2 opacity-50 font-mono">CSV: Date, Platform, Impressions, Engagement, Sentiment, Topic (Optional: Age, Gender, Interest)</p>
                 </div>
             ) : stats.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-float">
                 
                 {/* Filters & KPIs */}
                 <div className="lg:col-span-3">
-                    <div className="flex flex-col md:flex-row gap-4 mb-4 items-center glass-panel p-4 rounded-xl">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t(lang, 'filterSentiment')}:</span>
-                        <div className="flex gap-2">
-                            {(['ALL', '0-50', '50-75', '75-100'] as SentimentFilterType[]).map(filter => (
-                                <button
-                                    key={filter}
-                                    onClick={() => setSentimentFilter(filter)}
-                                    className={`px-3 py-1.5 rounded text-[10px] font-bold font-mono transition-all ${
-                                        sentimentFilter === filter 
-                                        ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' 
-                                        : 'bg-white/5 text-slate-500 hover:text-white'
-                                    }`}
-                                >
-                                    {filter === 'ALL' ? t(lang, 'filterAll') : filter}
-                                </button>
-                            ))}
+                    <div className="glass-panel p-4 rounded-xl mb-4">
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                            {/* Sentiment Filter */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t(lang, 'filterSentiment')}:</span>
+                                <div className="flex gap-1">
+                                    {(['ALL', '0-50', '50-75', '75-100'] as SentimentFilterType[]).map(filter => (
+                                        <button
+                                            key={filter}
+                                            onClick={() => setSentimentFilter(filter)}
+                                            className={`px-3 py-1.5 rounded text-[10px] font-bold font-mono transition-all ${
+                                                sentimentFilter === filter 
+                                                ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' 
+                                                : 'bg-white/5 text-slate-500 hover:text-white'
+                                            }`}
+                                        >
+                                            {filter === 'ALL' ? t(lang, 'filterAll') : filter}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Demographics Filters */}
+                            <div className="flex gap-3">
+                                {availableAges.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{t(lang, 'filterAge')}</span>
+                                        <select 
+                                            value={filterAge}
+                                            onChange={(e) => setFilterAge(e.target.value)}
+                                            className="bg-black/40 text-white text-[10px] border border-white/10 rounded px-2 py-1 outline-none focus:border-blue-500"
+                                        >
+                                            <option value="ALL">{t(lang, 'filterAll')}</option>
+                                            {availableAges.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                {availableGenders.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{t(lang, 'filterGender')}</span>
+                                        <select 
+                                            value={filterGender}
+                                            onChange={(e) => setFilterGender(e.target.value)}
+                                            className="bg-black/40 text-white text-[10px] border border-white/10 rounded px-2 py-1 outline-none focus:border-blue-500"
+                                        >
+                                            <option value="ALL">{t(lang, 'filterAll')}</option>
+                                            {availableGenders.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                 {availableInterests.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{t(lang, 'filterInterest')}</span>
+                                        <select 
+                                            value={filterInterest}
+                                            onChange={(e) => setFilterInterest(e.target.value)}
+                                            className="bg-black/40 text-white text-[10px] border border-white/10 rounded px-2 py-1 outline-none focus:border-blue-500"
+                                        >
+                                            <option value="ALL">{t(lang, 'filterAll')}</option>
+                                            {availableInterests.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
-                        {/* Platform Filter Badge */}
-                        {filterPlatform && (
-                                <div className="flex items-center gap-2 bg-blue-900/50 px-3 py-1 rounded text-[10px] font-bold border border-blue-500/50 text-blue-300">
-                                    PLATFORM: {filterPlatform}
-                                    <button onClick={() => setFilterPlatform(null)} className="hover:text-white">✕</button>
-                                </div>
-                        )}
-
-                        <div className="ml-auto text-[10px] text-slate-500 font-mono">
-                            INDEXING {filteredStats.length} / {stats.length} RECORDS
+                        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-2">
+                             {/* Platform Filter Badge */}
+                            {filterPlatform && (
+                                    <div className="flex items-center gap-2 bg-blue-900/50 px-3 py-1 rounded text-[10px] font-bold border border-blue-500/50 text-blue-300">
+                                        PLATFORM: {filterPlatform}
+                                        <button onClick={() => setFilterPlatform(null)} className="hover:text-white">✕</button>
+                                    </div>
+                            )}
+                            <div className="ml-auto text-[10px] text-slate-500 font-mono">
+                                INDEXING {filteredStats.length} / {stats.length} RECORDS
+                            </div>
                         </div>
                     </div>
 
@@ -470,6 +576,18 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                             <p className="text-slate-300 leading-relaxed font-light italic">"{analysis.summary}"</p>
                             </div>
                             
+                            {/* Technical Report Section (New) */}
+                            {analysis.technical_report && (
+                                <div className="bg-black/30 p-4 rounded-lg border border-slate-700 font-mono">
+                                    <h4 className="text-slate-500 font-bold uppercase text-[9px] mb-2 tracking-widest border-b border-slate-700 pb-1 flex items-center gap-2">
+                                        <span>⚙️</span> {t(lang, 'technicalReport')}
+                                    </h4>
+                                    <p className="text-emerald-500/80 leading-relaxed text-[10px] whitespace-pre-wrap">
+                                        {analysis.technical_report}
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Trends Section */}
                             <div>
                             <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">

@@ -78,10 +78,15 @@ export interface NetworkStat {
   engagement: number;
   sentiment_score: number; // 0 to 100
   top_topic: string;
+  // Demographics (Optional columns in CSV)
+  age_group?: string; 
+  gender?: string;
+  interest_category?: string;
 }
 
 export interface NetworkAgentAnalysis {
-  thoughtProcess: string; // New
+  thoughtProcess: string; 
+  technical_report: string; // New: Methodology report
   summary: string;
   trends: string[];
   recommendations: string[];

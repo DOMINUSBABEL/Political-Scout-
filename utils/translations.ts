@@ -88,6 +88,11 @@ export const translations = {
     scanning: "RASTREANDO GOOGLE & REDES...",
     trendResults: "Resultados de Tendencias",
     trendSource: "Fuente",
+    // Demographics Filters
+    filterAge: "Edad",
+    filterGender: "Género",
+    filterInterest: "Interés",
+    technicalReport: "REPORTE TÉCNICO DE EXTRACCIÓN"
   },
   EN: {
     warRoomTitle: "GENERAL ANALYSIS",
@@ -175,6 +180,11 @@ export const translations = {
     scanning: "TRACKING GOOGLE & NETWORKS...",
     trendResults: "Trend Results",
     trendSource: "Source",
+    // Demographics Filters
+    filterAge: "Age",
+    filterGender: "Gender",
+    filterInterest: "Interest",
+    technicalReport: "TECHNICAL EXTRACTION REPORT"
   },
   FR: {
     warRoomTitle: "ANALYSE GÉNÉRALE",
@@ -262,6 +272,11 @@ export const translations = {
     scanning: "TRAQUE GOOGLE & RÉSEAUX...",
     trendResults: "Résultats des Tendances",
     trendSource: "Source",
+    // Demographics Filters
+    filterAge: "Age",
+    filterGender: "Genre",
+    filterInterest: "Intérêt",
+    technicalReport: "RAPPORT TECHNIQUE D'EXTRACTION"
   },
   DE: {
     warRoomTitle: "ALLGEMEINE ANALYSE",
@@ -349,6 +364,11 @@ export const translations = {
     scanning: "GOOGLE & NETZWERKE TRACKEN...",
     trendResults: "Trend-Ergebnisse",
     trendSource: "Quelle",
+    // Demographics Filters
+    filterAge: "Alter",
+    filterGender: "Geschlecht",
+    filterInterest: "Interesse",
+    technicalReport: "TECHNISCHER EXTRAKTIONSBERICHT"
   }
 };
 

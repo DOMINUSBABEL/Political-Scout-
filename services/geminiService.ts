@@ -182,7 +182,8 @@ export const translateToStyle = async (text: string, profile: CandidateProfile, 
 export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: boolean = false): Promise<NetworkAgentAnalysis> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const statsSummary = JSON.stringify(stats.slice(0, 30)); 
+  // Create a summary including demographics if present
+  const statsSummary = JSON.stringify(stats.slice(0, 40)); 
 
   const prompt = `
     Eres "El Estratega de Campaña" (Campaign Manager Agent).
@@ -192,11 +193,21 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
     
     ${deepResearch ? "Realiza un análisis PROFUNDO. Busca correlaciones no obvias. Piensa paso a paso." : ""}
 
+    TAREAS:
     1. Identifica qué temas (top_topic) están funcionando mejor y por qué.
     2. Detecta qué plataforma tiene mejor engagement.
-    3. Dame 3 recomendaciones tácticas CONCRETAS para la próxima semana.
+    3. Si hay datos demográficos (Edad/Género), inclúyelos en tu análisis de segmentación.
+    4. Dame 3 recomendaciones tácticas CONCRETAS para la próxima semana.
     
-    Devuelve JSON estructurado. INCLUYE un campo 'thoughtProcess' explicando tu lógica.
+    REQUERIMIENTO ESPECIAL - REPORTE TÉCNICO:
+    Debes incluir un campo 'technical_report' que explique con lenguaje técnico/científico de datos cómo se procesó esta información. 
+    Menciona: 
+    - Metodología de ingesta (CSV Parsing).
+    - Normalización de métricas (Engagement Rate Calculation).
+    - Filtrado de ruido y detección de outliers.
+    - Si detectaste segmentos de edad o género, menciona cómo se ponderaron.
+    
+    Devuelve JSON estructurado.
   `;
 
   try {
@@ -211,6 +222,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
           type: Type.OBJECT,
           properties: {
             thoughtProcess: { type: Type.STRING },
+            technical_report: { type: Type.STRING, description: "Detailed technical explanation of data extraction and processing methodology." },
             summary: { type: Type.STRING },
             trends: { type: Type.ARRAY, items: { type: Type.STRING } },
             recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -226,6 +238,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
     console.error("Network Agent Error:", error);
     return {
       thoughtProcess: "Analysis failed.",
+      technical_report: "Error generating technical report.",
       summary: "Error analyzing data.",
       trends: [],
       recommendations: ["Check data format"],
