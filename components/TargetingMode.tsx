@@ -53,6 +53,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const [region, setRegion] = useState(medellinComunas[0]);
   const [deepResearch, setDeepResearch] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [loadingImageId, setLoadingImageId] = useState<string | null>(null);
   const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
   const [segments, setSegments] = useState<TargetSegment[]>([]);
@@ -60,28 +61,33 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
 
   const handleGenerateSegments = async () => {
     setLoading(true);
+    setError(null);
     setSegments([]);
+    
     try {
         const results = await generateSegments(region, activeProfile, deepResearch);
+        if (!results || results.length === 0) {
+            throw new Error("Analysis yielded no segments. Try disabling Deep Research or changing the region.");
+        }
         setSegments(results);
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        alert("Failed to generate segments. Check API Key.");
+        setError(e.message || "Failed to generate segments.");
     } finally {
         setLoading(false);
     }
   };
 
   const handleGenerateAd = async (segmentId: string) => {
-    // Only generate the Text/Plan first. Image is manual.
     const segment = segments.find(s => s.id === segmentId);
     if (!segment) return;
 
     setLoading(true);
+    setError(null);
+    
     try {
         const campaign = await generateAdCampaign(segment, activeProfile);
         
-        // Update segment with campaign (but no image/audio yet)
         setSegments(prev => prev.map(s => {
             if (s.id === segmentId) {
                 return { ...s, adCampaign: campaign };
@@ -89,8 +95,9 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
             return s;
         }));
         setExpandedSegment(segmentId);
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
+        setError(e.message || "Failed to generate campaign.");
     } finally {
         setLoading(false);
     }
@@ -101,6 +108,8 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
     if (!segment || !segment.adCampaign) return;
 
     setLoadingImageId(segmentId);
+    setError(null);
+    
     try {
         const imageUrl = await generateMarketingImage(
             segment.adCampaign.visualPrompt, 
@@ -116,8 +125,10 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
             }
             return s;
         }));
-    } catch (e) {
+    } catch (e: any) {
         console.error("Image Gen Failed", e);
+        // Don't block whole UI, just show error in console or alert
+        alert("Image generation failed. Please try again.");
     } finally {
         setLoadingImageId(null);
     }
@@ -141,6 +152,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
         }));
     } catch (e) {
         console.error("Audio Gen Failed", e);
+        alert("Audio generation failed.");
     } finally {
         setLoadingAudioId(null);
     }
@@ -148,7 +160,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
 
   return (
     <div className="max-w-7xl mx-auto pb-20 space-y-8">
-      <ProgressBar active={loading || !!loadingImageId || !!loadingAudioId} progress={loading ? 40 : 90} label="PROCESSING" />
+      <ProgressBar active={loading || !!loadingImageId || !!loadingAudioId} progress={loading ? 40 : 90} label="PROCESSING" estimatedSeconds={deepResearch ? 15 : 8} />
 
       {/* Header */}
       <div className="border-b border-white/5 pb-6">
@@ -202,12 +214,23 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
             </div>
         </div>
 
+        {error && (
+            <div className="mb-6 bg-red-950/30 border border-red-500/50 rounded-lg p-4 flex items-center gap-3 animate-pulse">
+                <span className="text-2xl">⚠️</span>
+                <span className="text-red-300 font-mono text-xs">{error}</span>
+            </div>
+        )}
+
         <ThinkingConsole isVisible={loading} mode="TARGETING" isDeepResearch={deepResearch} />
 
         <button 
             onClick={handleGenerateSegments}
             disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg uppercase tracking-[0.2em] text-xs shadow-lg transition-all"
+            className={`w-full font-bold py-4 rounded-lg uppercase tracking-[0.2em] text-xs shadow-lg transition-all ${
+                loading 
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed' 
+                : 'bg-purple-600 hover:bg-purple-500 text-white'
+            }`}
         >
             {loading ? "ANALYZING POPULATION..." : t(lang, 'genSegments')}
         </button>
@@ -227,15 +250,15 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                                   <h3 className="text-2xl font-black text-white uppercase tracking-tight">{seg.name}</h3>
                               </div>
                               <div className="flex flex-wrap gap-2 mb-4">
-                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.ageRange}</span>
-                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.gender}</span>
-                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.location}</span>
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics?.ageRange || 'N/A'}</span>
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics?.gender || 'N/A'}</span>
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics?.location || 'N/A'}</span>
                               </div>
                               <p className="text-slate-400 text-sm leading-relaxed mb-4">{seg.recommendedStrategy}</p>
                               
                               <div className="flex items-center gap-4 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
                                   <span>Affinity: <b className="text-emerald-400">{seg.affinityScore}%</b></span>
-                                  <span>Size: <b className="text-blue-400">~{seg.estimatedSize.toLocaleString()}</b></span>
+                                  <span>Size: <b className="text-blue-400">~{seg.estimatedSize?.toLocaleString() || 'Unknown'}</b></span>
                               </div>
                           </div>
 

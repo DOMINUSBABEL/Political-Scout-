@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType, TargetSegment, AdCampaign, TrendAnalysis } from "../types";
 
-// Helper for Base64 Audio decoding (Web Audio API)
+// Helper for Base64 Audio decoding
 const decodeAudioData = async (base64: string, ctx: AudioContext): Promise<AudioBuffer> => {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -11,6 +11,15 @@ const decodeAudioData = async (base64: string, ctx: AudioContext): Promise<Audio
     bytes[i] = binaryString.charCodeAt(i);
   }
   return await ctx.decodeAudioData(bytes.buffer);
+};
+
+// Helper: Clean JSON Markdown wrappers (Fixes the "Stuck/Loop" parsing error)
+const cleanJSON = (text: string): string => {
+  if (!text) return "{}";
+  let clean = text.trim();
+  // Remove markdown code blocks ```json ... ```
+  clean = clean.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '');
+  return clean.trim();
 };
 
 export const analyzeAndGenerate = async (
@@ -23,7 +32,6 @@ export const analyzeAndGenerate = async (
 ): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Dynamic System Prompt construction based on selected Profile
   const SYSTEM_PROMPT = `
 ACTÚA COMO: ${profile.name}
 ROL: ${profile.role}
@@ -94,7 +102,7 @@ INSTRUCCIONES DE ESTILO:
       config: {
         systemInstruction: SYSTEM_PROMPT,
         tools: tools,
-        thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
+        thinkingConfig: deepResearch ? { thinkingBudget: 16000 } : undefined, // Optimized budget
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -125,15 +133,7 @@ INSTRUCCIONES DE ESTILO:
       },
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-    
-    let cleanText = text.trim();
-    if (cleanText.startsWith("```")) {
-      cleanText = cleanText.replace(/^```(json)?|```$/g, "");
-    }
-    
-    const parsed = JSON.parse(cleanText);
+    const parsed = JSON.parse(cleanJSON(response.text || "{}"));
     if (!parsed.responses || !Array.isArray(parsed.responses)) {
         parsed.responses = [];
     }
@@ -202,7 +202,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
       contents: prompt,
       config: {
         tools: deepResearch ? [{ googleSearch: {} }] : [],
-        thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
+        thinkingConfig: deepResearch ? { thinkingBudget: 4096 } : undefined,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -217,9 +217,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No Data Analysis Returned");
-    return JSON.parse(text) as NetworkAgentAnalysis;
+    return JSON.parse(cleanJSON(response.text || "{}")) as NetworkAgentAnalysis;
 
   } catch (error) {
     console.error("Network Agent Error:", error);
@@ -288,9 +286,7 @@ export const scanNetworkTrends = async (date: string, location: string): Promise
             }
         });
 
-        const text = response.text;
-        if (!text) throw new Error("Trend Scan Failed");
-        return JSON.parse(text) as TrendAnalysis;
+        return JSON.parse(cleanJSON(response.text || "{}")) as TrendAnalysis;
 
     } catch (e) {
         console.error("Trend Scan Error:", e);
@@ -325,7 +321,7 @@ export const generateSegments = async (region: string, profile: CandidateProfile
             contents: prompt,
             config: {
                 tools: deepResearch ? [{ googleSearch: {} }] : [],
-                thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
+                thinkingConfig: deepResearch ? { thinkingBudget: 2048 } : undefined, // Reduced from 35k to prevent long loops
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
@@ -353,12 +349,14 @@ export const generateSegments = async (region: string, profile: CandidateProfile
             }
         });
         
-        const text = response.text;
-        if (!text) throw new Error("Failed to generate segments");
+        // Post-processing with CleanJSON and safe defaults
+        const segments = JSON.parse(cleanJSON(response.text || "[]")) as TargetSegment[];
         
-        // Post-processing to ensure IDs
-        const segments = JSON.parse(text) as TargetSegment[];
-        return segments.map((s, i) => ({ ...s, id: `seg-${Date.now()}-${i}` }));
+        return segments.map((s, i) => ({ 
+            ...s, 
+            id: `seg-${Date.now()}-${i}`,
+            demographics: s.demographics || { ageRange: 'Unknown', gender: 'Unknown', location: region }
+        }));
 
     } catch (error) {
         console.error("Segment Gen Error:", error);
@@ -427,9 +425,7 @@ export const generateAdCampaign = async (
         }
       });
       
-      const text = response.text;
-      if (!text) throw new Error("Ad Gen Failed");
-      return JSON.parse(text) as AdCampaign;
+      return JSON.parse(cleanJSON(response.text || "{}")) as AdCampaign;
 
     } catch (e) {
       console.error(e);
