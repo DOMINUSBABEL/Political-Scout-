@@ -9,6 +9,41 @@ interface Props {
   activeProfile: CandidateProfile;
 }
 
+// Data Sets
+const medellinComunas = [
+  "Comuna 1 - Popular", "Comuna 2 - Santa Cruz", "Comuna 3 - Manrique", "Comuna 4 - Aranjuez",
+  "Comuna 5 - Castilla", "Comuna 6 - Doce de Octubre", "Comuna 7 - Robledo", "Comuna 8 - Villa Hermosa",
+  "Comuna 9 - Buenos Aires", "Comuna 10 - La Candelaria", "Comuna 11 - Laureles-Estadio",
+  "Comuna 12 - La América", "Comuna 13 - San Javier", "Comuna 14 - El Poblado", "Comuna 15 - Guayabal",
+  "Comuna 16 - Belén"
+];
+
+const medellinCorregimientos = [
+  "San Sebastián de Palmitas", "San Cristóbal", 
+  "Altavista", "San Antonio de Prado", "Santa Elena"
+];
+
+const areaMetropolitana = [
+  "Barbosa", "Bello", "Caldas", "Copacabana", "Envigado", "Girardota", "Itagüí", "La Estrella", "Sabaneta"
+];
+
+const antioquiaMunicipios = [
+  "Abejorral", "Abriaquí", "Alejandría", "Amagá", "Amalfi", "Andes", "Angelópolis", "Angostura", "Anorí", 
+  "Santa Fe de Antioquia", "Anzá", "Apartadó", "Arboletes", "Argelia", "Armenia", "Belmira", "Betania", 
+  "Betulia", "Ciudad Bolívar", "Briceño", "Buriticá", "Cáceres", "Caicedo", "Campamento", "Cañasgordas", 
+  "Caracolí", "Caramanta", "Carepa", "El Carmen de Viboral", "Carolina del Príncipe", "Caucasia", "Chigorodó", 
+  "Cisneros", "Cocorná", "Concepción", "Concordia", "Dabeiba", "Donmatías", "Ebéjico", "El Bagre", "Entrerríos", 
+  "Fredonia", "Frontino", "Giraldo", "Gómez Plata", "Granada", "Guadalupe", "Guarne", "Guatapé", "Heliconia", 
+  "Hispania", "Ituango", "Jardín", "Jericó", "La Ceja", "La Pintada", "La Unión", "Liborina", "Maceo", "Marinilla", 
+  "Montebello", "Murindó", "Mutatá", "Nariño", "Necoclí", "Nechí", "Olaya", "Peque", "Pueblorrico", "Puerto Berrío", 
+  "Puerto Nare", "Puerto Triunfo", "Remedios", "El Retiro", "Rionegro", "Sabanalarga", "Salgar", "San Andrés de Cuerquia", 
+  "San Carlos", "San Francisco", "San Jerónimo", "San José de la Montaña", "San Juan de Urabá", "San Luis", 
+  "San Pedro de los Milagros", "San Pedro de Urabá", "San Rafael", "San Roque", "San Vicente", "Santa Bárbara", 
+  "Santa Rosa de Osos", "Santo Domingo", "El Santuario", "Segovia", "Sonsón", "Sopetrán", "Támesis", "Tarazá", 
+  "Tarso", "Titiribí", "Toledo", "Turbo", "Uramita", "Urrao", "Valdivia", "Valparaíso", "Vegachí", "Venecia", 
+  "Vigía del Fuerte", "Yalí", "Yarumal", "Yolombó", "Yondó", "Zaragoza"
+];
+
 export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const [region, setRegion] = useState('Medellín - General');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -95,7 +130,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
         {
           id: '1',
           name: 'Madres Cabeza de Familia',
-          demographics: { ageRange: '35-45', gender: 'Female', location: 'Comuna 7 (Robledo)' },
+          demographics: { ageRange: '35-45', gender: 'Female', location: region.includes('Medellín') ? 'Comuna 7 (Robledo)' : region },
           estimatedSize: 12500,
           affinityScore: 78,
           topInterests: ['Educación', 'Seguridad Alimentaria'],
@@ -137,13 +172,26 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
               <select 
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full glass-input p-3 rounded text-white text-sm"
+                className="w-full glass-input p-3 rounded text-white text-sm custom-scrollbar"
               >
-                <option value="Medellín - General">Medellín (All)</option>
-                <option value="Comuna 1 - Popular">Comuna 1 - Popular</option>
-                <option value="Comuna 7 - Robledo">Comuna 7 - Robledo</option>
-                <option value="Comuna 14 - El Poblado">Comuna 14 - El Poblado</option>
-                <option value="Antioquia - Rural">Antioquia (Rural)</option>
+                <option value="Medellín - General">Medellín (Todas las zonas)</option>
+                <option value="Antioquia - General">Antioquia (Todo el departamento)</option>
+                
+                <optgroup label="Medellín - Comunas">
+                  {medellinComunas.map(c => <option key={c} value={c}>{c}</option>)}
+                </optgroup>
+                
+                <optgroup label="Medellín - Corregimientos">
+                  {medellinCorregimientos.map(c => <option key={c} value={`Corregimiento ${c}`}>{c}</option>)}
+                </optgroup>
+
+                <optgroup label="Valle de Aburrá (Área Metro)">
+                  {areaMetropolitana.map(m => <option key={m} value={m}>{m}</option>)}
+                </optgroup>
+
+                <optgroup label="Municipios de Antioquia">
+                   {antioquiaMunicipios.map(m => <option key={m} value={m}>{m}</option>)}
+                </optgroup>
               </select>
            </div>
 
