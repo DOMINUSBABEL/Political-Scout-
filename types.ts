@@ -90,10 +90,14 @@ export interface NetworkAgentAnalysis {
 
 // New Segmentation & Ad Interfaces
 export interface AdCampaign {
-  visualPrompt: string; // For Midjourney/Imagen/Gemini
+  visualPrompt: string; 
+  imageAspectRatio: "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
   copyText: string;
+  audioScript: string; // New: Script for TTS
   callToAction: string;
-  generatedImageUrl?: string; // New: Stores the generated or uploaded ad image
+  generatedImageUrl?: string; 
+  generatedAudioUrl?: string; // New: URL for generated audio
+  voiceProfile?: string; // New: Selected voice
   chronoposting: {
     bestDay: string;
     bestTime: string;
