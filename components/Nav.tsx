@@ -10,9 +10,10 @@ interface NavProps {
   lang: Language;
   setLang: (lang: Language) => void;
   activeProfile: CandidateProfile;
+  onLogout: () => void;
 }
 
-export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang, activeProfile }) => {
+export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang, activeProfile, onLogout }) => {
   return (
     <div className="w-20 md:w-72 h-screen fixed left-0 top-0 z-50 flex flex-col border-r border-white/5 bg-slate-950/60 backdrop-blur-2xl">
       
@@ -89,7 +90,7 @@ export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang, a
       </div>
 
       {/* Footer / Language */}
-      <div className="p-6 border-t border-white/5 bg-black/20">
+      <div className="p-6 border-t border-white/5 bg-black/20 space-y-4">
         <div className="grid grid-cols-2 gap-2">
           {(['ES', 'EN', 'FR', 'DE'] as Language[]).map((l) => (
             <button
@@ -105,6 +106,17 @@ export const Nav: React.FC<NavProps> = ({ currentMode, setMode, lang, setLang, a
             </button>
           ))}
         </div>
+        
+        {/* Logout Button */}
+        <button 
+           onClick={onLogout}
+           className="w-full flex items-center justify-center gap-2 py-2 rounded border border-red-900/30 bg-red-950/20 text-red-400 hover:bg-red-900/40 hover:text-white transition-all group"
+        >
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+           </svg>
+           <span className="hidden md:block text-[9px] font-bold uppercase tracking-widest">LOGOUT</span>
+        </button>
       </div>
     </div>
   );

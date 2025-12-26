@@ -49,7 +49,7 @@ export const translations = {
     profileTitle: "GESTIÓN DE CANDIDATOS",
     profileSubtitle: "Configuración de Personalidad y Base de Conocimiento",
     availableProfiles: "Perfiles Disponibles",
-    addProfile: "Nuevo Candidato",
+    addProfile: "Nuevo Candidat@",
     createNewProfile: "Crear Nuevo Agente",
     voterProfile: "Perfil de Votante",
     voterHardSupport: "Base Sólida",
@@ -72,6 +72,16 @@ export const translations = {
     adVisual: "Prompt Visual (Midjourney)",
     adCopy: "Copy / Caption",
     adChrono: "Chronoposting (Mejor Horario)",
+    // New Trends
+    tabUpload: "ANÁLISIS DE ARCHIVO",
+    tabLiveScan: "ESCANER DE TENDENCIAS EN VIVO",
+    scanTitle: "RADAR DE TENDENCIAS (GOOGLE TRENDS)",
+    scanDate: "Fecha de Análisis",
+    scanLoc: "Ubicación Geográfica",
+    scanBtn: "ESCANEAR REDES",
+    scanning: "RASTREANDO GOOGLE & REDES...",
+    trendResults: "Resultados de Tendencias",
+    trendSource: "Fuente",
   },
   EN: {
     warRoomTitle: "GENERAL ANALYSIS",
@@ -143,6 +153,16 @@ export const translations = {
     adVisual: "Visual Prompt (Midjourney)",
     adCopy: "Copy / Caption",
     adChrono: "Chronoposting (Best Time)",
+    // New Trends
+    tabUpload: "FILE ANALYSIS",
+    tabLiveScan: "LIVE TREND SCANNER",
+    scanTitle: "TREND RADAR (GOOGLE TRENDS)",
+    scanDate: "Analysis Date",
+    scanLoc: "Geographic Location",
+    scanBtn: "SCAN NETWORKS",
+    scanning: "TRACKING GOOGLE & NETWORKS...",
+    trendResults: "Trend Results",
+    trendSource: "Source",
   },
   FR: {
     warRoomTitle: "ANALYSE GÉNÉRALE",
@@ -214,6 +234,16 @@ export const translations = {
     adVisual: "Prompt Visuel (Midjourney)",
     adCopy: "Copy / Légende",
     adChrono: "Chronoposting (Meilleur Horaire)",
+    // New Trends
+    tabUpload: "ANALYSE DE FICHIER",
+    tabLiveScan: "SCANNER DE TENDANCES EN DIRECT",
+    scanTitle: "RADAR DE TENDANCES (GOOGLE TRENDS)",
+    scanDate: "Date d'Analyse",
+    scanLoc: "Localisation Géographique",
+    scanBtn: "SCANNER RÉSEAUX",
+    scanning: "TRAQUE GOOGLE & RÉSEAUX...",
+    trendResults: "Résultats des Tendances",
+    trendSource: "Source",
   },
   DE: {
     warRoomTitle: "ALLGEMEINE ANALYSE",
@@ -285,6 +315,16 @@ export const translations = {
     adVisual: "Visueller Prompt (Midjourney)",
     adCopy: "Copy / Bildunterschrift",
     adChrono: "Chronoposting (Beste Zeit)",
+    // New Trends
+    tabUpload: "DATEIANALYSE",
+    tabLiveScan: "LIVE-TREND-SCANNER",
+    scanTitle: "TREND-RADAR (GOOGLE TRENDS)",
+    scanDate: "Analysedatum",
+    scanLoc: "Geografischer Standort",
+    scanBtn: "NETZWERKE SCANNEN",
+    scanning: "GOOGLE & NETZWERKE TRACKEN...",
+    trendResults: "Trend-Ergebnisse",
+    trendSource: "Quelle",
   }
 };
 

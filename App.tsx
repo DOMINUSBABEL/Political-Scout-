@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Nav } from './components/Nav';
 import { GeneralAnalysisMode } from './components/GeneralAnalysisMode';
 import { TranslatorMode } from './components/TranslatorMode';
@@ -30,13 +30,26 @@ const INITIAL_PROFILE: CandidateProfile = {
 };
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Initialize state from LocalStorage to persist session
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('candidato_ai_session') === 'active';
+  });
+
   const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.GENERAL);
   const [language, setLanguage] = useState<Language>('ES');
   
   // Profile Management State
   const [profiles, setProfiles] = useState<CandidateProfile[]>([INITIAL_PROFILE]);
   const [activeProfile, setActiveProfile] = useState<CandidateProfile>(INITIAL_PROFILE);
+
+  const handleSessionChange = (status: boolean) => {
+    if (status) {
+      localStorage.setItem('candidato_ai_session', 'active');
+    } else {
+      localStorage.removeItem('candidato_ai_session');
+    }
+    setIsAuthenticated(status);
+  };
 
   const handleAddProfile = (newProfile: CandidateProfile) => {
     setProfiles([...profiles, newProfile]);
@@ -45,7 +58,7 @@ function App() {
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={setIsAuthenticated} lang={language} setLang={setLanguage} />;
+    return <Login onLogin={handleSessionChange} lang={language} setLang={setLanguage} />;
   }
 
   return (
@@ -70,6 +83,7 @@ function App() {
         lang={language}
         setLang={setLanguage}
         activeProfile={activeProfile}
+        onLogout={() => handleSessionChange(false)}
       />
 
       {/* Main Content Area */}

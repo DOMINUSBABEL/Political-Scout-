@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType, TargetSegment, AdCampaign } from "../types";
+import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType, TargetSegment, AdCampaign, TrendAnalysis } from "../types";
 
 // Helper for Base64 Audio decoding (Web Audio API)
 const decodeAudioData = async (base64: string, ctx: AudioContext): Promise<AudioBuffer> => {
@@ -94,6 +94,7 @@ INSTRUCCIONES DE ESTILO:
       config: {
         systemInstruction: SYSTEM_PROMPT,
         tools: tools,
+        thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -201,6 +202,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
       contents: prompt,
       config: {
         tools: deepResearch ? [{ googleSearch: {} }] : [],
+        thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -229,6 +231,139 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
       best_platform: "N/A"
     };
   }
+};
+
+export const scanNetworkTrends = async (date: string, location: string): Promise<TrendAnalysis> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const prompt = `
+    ACT AS: Senior Political Intelligence Analyst.
+    MISSION: Perform a scan of DIGITAL TRENDS and NEWS for a specific date and location using Google Search.
+    
+    PARAMETERS:
+    - Date: ${date}
+    - Geolocation: ${location}
+    
+    INSTRUCTIONS:
+    1. Search for what was trending on Google Trends, Twitter (X), and Local News on that specific date in that location.
+    2. Identify the top 5 most talked-about topics (hashtags, scandals, events).
+    3. Identify 3 major Breaking News headlines from that day.
+    4. Provide a brief summary of the digital mood (General Sentiment).
+    
+    You must use the 'googleSearch' tool to find real historical or real-time data.
+    
+    OUTPUT: JSON format.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        date: { type: Type.STRING },
+                        location: { type: Type.STRING },
+                        summary: { type: Type.STRING, description: "Executive summary of the day's digital atmosphere." },
+                        topTrends: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    rank: { type: Type.INTEGER },
+                                    topic: { type: Type.STRING },
+                                    volume: { type: Type.STRING, description: "Estimated search/post volume if available, e.g. '50k+'" },
+                                    description: { type: Type.STRING },
+                                    platformSource: { type: Type.STRING, enum: ['Google', 'X', 'TikTok', 'News'] },
+                                    sentiment: { type: Type.STRING, enum: ['Positive', 'Negative', 'Neutral'] }
+                                }
+                            }
+                        },
+                        breakingNews: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                }
+            }
+        });
+
+        const text = response.text;
+        if (!text) throw new Error("Trend Scan Failed");
+        return JSON.parse(text) as TrendAnalysis;
+
+    } catch (e) {
+        console.error("Trend Scan Error:", e);
+        throw e;
+    }
+};
+
+export const generateSegments = async (region: string, profile: CandidateProfile, deepResearch: boolean = false): Promise<TargetSegment[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const prompt = `
+      ROLE: Chief Political Strategist & Data Scientist.
+      TASK: Analyze the voter demographics and psychographics for: ${region}.
+      CANDIDATE CONTEXT: ${profile.name} (${profile.styleDescription}).
+      
+      ${deepResearch ? "DEEP RESEARCH MODE: Search for real recent news, DANE census data, and social trends in this specific region." : ""}
+
+      OUTPUT: Generate 4 distinct Target Segments (Clusters) that exist in this region.
+      For each segment, provide:
+      1. Name (creative, e.g., "Madres Cabeza de Familia", "Jóvenes Sin Futuro").
+      2. Demographics (Age, Gender, Location nuances).
+      3. Pain Points (Specific local problems).
+      4. Affinity Score (0-100, how likely are they to vote for ${profile.name} based on her style).
+      5. Recommended Strategy (How to approach them).
+
+      Return JSON Array.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                tools: deepResearch ? [{ googleSearch: {} }] : [],
+                thinkingConfig: deepResearch ? { thinkingBudget: 35000 } : undefined,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            name: { type: Type.STRING },
+                            demographics: { 
+                                type: Type.OBJECT,
+                                properties: {
+                                    ageRange: { type: Type.STRING },
+                                    gender: { type: Type.STRING },
+                                    location: { type: Type.STRING }
+                                }
+                            },
+                            estimatedSize: { type: Type.NUMBER },
+                            affinityScore: { type: Type.NUMBER },
+                            topInterests: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            painPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            recommendedStrategy: { type: Type.STRING }
+                        }
+                    }
+                }
+            }
+        });
+        
+        const text = response.text;
+        if (!text) throw new Error("Failed to generate segments");
+        
+        // Post-processing to ensure IDs
+        const segments = JSON.parse(text) as TargetSegment[];
+        return segments.map((s, i) => ({ ...s, id: `seg-${Date.now()}-${i}` }));
+
+    } catch (error) {
+        console.error("Segment Gen Error:", error);
+        throw error;
+    }
 };
 
 export const generateAdCampaign = async (
@@ -352,17 +487,7 @@ export const generateMarketingAudio = async (text: string, voiceName: string = "
         const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (!base64Audio) throw new Error("No audio generated");
         
-        return `data:audio/wav;base64,${base64Audio}`; // Gemini returns Raw PCM usually, but browser can handle base64 data URI often or we decode. 
-        // For simple <audio src="..."> playback in React, Data URI works if mimeType is set. 
-        // However, raw PCM requires decoding. Let's try to assume it's playable or use a helper if needed.
-        // Actually, gemini returns raw PCM. A simple data URI might not work directly in <audio> tag without headers.
-        // For this demo, let's return the base64 and handle decoding in the component if necessary, 
-        // OR try the data URI approach. If it's raw PCM, we need to wrap it in a WAV container or use AudioContext.
-        
-        // Let's assume for the "World Class" demo we treat it as a playable blob or we just return base64 
-        // and the component uses a helper.
-        return base64Audio;
-        
+        return `data:audio/wav;base64,${base64Audio}`; 
     } catch (error) {
         console.error("Audio Gen Error:", error);
         throw error;

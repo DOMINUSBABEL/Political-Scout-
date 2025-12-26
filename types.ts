@@ -88,6 +88,24 @@ export interface NetworkAgentAnalysis {
   best_platform: string;
 }
 
+// Trends Scanner Interface
+export interface TrendItem {
+  rank: number;
+  topic: string;
+  volume: string; // e.g., "50K+ searches"
+  description: string;
+  platformSource: 'Google' | 'X' | 'TikTok' | 'News';
+  sentiment: 'Negative' | 'Neutral' | 'Positive';
+}
+
+export interface TrendAnalysis {
+  date: string;
+  location: string;
+  summary: string;
+  topTrends: TrendItem[];
+  breakingNews: string[];
+}
+
 // New Segmentation & Ad Interfaces
 export interface AdCampaign {
   visualPrompt: string; 

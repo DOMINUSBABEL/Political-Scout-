@@ -4,8 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   AreaChart, Area, Cell
 } from 'recharts';
-import { NetworkStat, Language, NetworkAgentAnalysis } from '../types';
-import { analyzeNetworkStats } from '../services/geminiService';
+import { NetworkStat, Language, NetworkAgentAnalysis, TrendAnalysis } from '../types';
+import { analyzeNetworkStats, scanNetworkTrends } from '../services/geminiService';
 import { ProgressBar } from './ProgressBar';
 import { t } from '../utils/translations';
 
@@ -14,8 +14,12 @@ interface Props {
 }
 
 type SentimentFilterType = 'ALL' | '0-50' | '50-75' | '75-100';
+type NetworkTab = 'UPLOAD' | 'LIVE';
 
 export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
+  const [activeTab, setActiveTab] = useState<NetworkTab>('UPLOAD');
+  
+  // File Upload State
   const [stats, setStats] = useState<NetworkStat[]>([]);
   const [analysis, setAnalysis] = useState<NetworkAgentAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +27,11 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilterType>('ALL');
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
+
+  // Live Trend Scan State
+  const [trendDate, setTrendDate] = useState(new Date().toISOString().split('T')[0]);
+  const [trendLocation, setTrendLocation] = useState('Colombia');
+  const [trendResults, setTrendResults] = useState<TrendAnalysis | null>(null);
 
   // Robust CSV Parser
   const parseCSV = (text: string): NetworkStat[] => {
@@ -161,6 +170,32 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
     reader.readAsText(file);
   };
 
+  const handleScanTrends = async () => {
+      if(!trendLocation) return;
+      setLoading(true);
+      setTrendResults(null);
+      setProgress(20);
+      
+      try {
+          // Simulate progress
+          const timer = setInterval(() => setProgress(p => Math.min(p + 5, 90)), 300);
+          
+          const results = await scanNetworkTrends(trendDate, trendLocation);
+          
+          clearInterval(timer);
+          setTrendResults(results);
+          setProgress(100);
+      } catch (e) {
+          console.error(e);
+          setErrorMessage("Failed to scan trends. Please check API Key or try again.");
+      } finally {
+          setTimeout(() => {
+              setLoading(false);
+              setProgress(0);
+          }, 500);
+      }
+  };
+
   const loadDemoData = async () => {
     setLoading(true);
     setProgress(20);
@@ -256,7 +291,7 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
 
   return (
     <div className="space-y-6 relative pb-20">
-      <ProgressBar active={loading} progress={progress} label={t(lang, 'analyzingNetwork')} />
+      <ProgressBar active={loading} progress={progress} label={activeTab === 'LIVE' ? t(lang, 'scanning') : t(lang, 'analyzingNetwork')} />
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4">
@@ -267,240 +302,378 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
            </h1>
            <p className="text-slate-400 mt-2 font-mono text-xs uppercase tracking-wider pl-5">// {t(lang, 'netSubtitle')}</p>
         </div>
-        <div className="flex flex-wrap gap-3 w-full md:w-auto">
-             {stats.length > 0 && (
-                 <button 
-                    onClick={handleDownload}
-                    className="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-all border border-white/5 flex items-center gap-2"
-                 >
-                    <span>💾</span> {t(lang, 'downloadData')}
-                 </button>
-             )}
-             <button 
-                onClick={loadDemoData}
-                className="text-[10px] font-mono text-slate-500 hover:text-white underline w-full md:w-auto text-left md:text-center uppercase"
-             >
-                [Load Demo Data]
-             </button>
-             <label className="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 hover:text-white px-5 py-2 rounded-lg font-bold text-xs uppercase cursor-pointer transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
-                <span>📁</span> {t(lang, 'uploadStats')}
-                <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="hidden" />
-             </label>
+        
+        {/* Tab Switcher */}
+        <div className="flex bg-black/40 p-1 rounded-lg border border-white/10">
+            <button 
+                onClick={() => setActiveTab('UPLOAD')}
+                className={`px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all ${
+                    activeTab === 'UPLOAD' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'
+                }`}
+            >
+                {t(lang, 'tabUpload')}
+            </button>
+            <button 
+                onClick={() => setActiveTab('LIVE')}
+                className={`px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all ${
+                    activeTab === 'LIVE' ? 'bg-pink-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'
+                }`}
+            >
+                {t(lang, 'tabLiveScan')}
+            </button>
         </div>
       </div>
 
-      {errorMessage && (
-          <div className="glass-panel border-red-500/50 text-red-300 p-4 rounded-xl flex items-center gap-3 animate-pulse">
-              <span className="text-2xl">⚠️</span>
-              <span className="font-bold font-mono">{errorMessage}</span>
-          </div>
-      )}
+      {activeTab === 'UPLOAD' ? (
+          <>
+            <div className="flex justify-end gap-3 w-full">
+                 {stats.length > 0 && (
+                     <button 
+                        onClick={handleDownload}
+                        className="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-all border border-white/5 flex items-center gap-2"
+                     >
+                        <span>💾</span> {t(lang, 'downloadData')}
+                     </button>
+                 )}
+                 <button 
+                    onClick={loadDemoData}
+                    className="text-[10px] font-mono text-slate-500 hover:text-white underline w-full md:w-auto text-left md:text-center uppercase"
+                 >
+                    [Load Demo Data]
+                 </button>
+                 <label className="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 hover:text-white px-5 py-2 rounded-lg font-bold text-xs uppercase cursor-pointer transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                    <span>📁</span> {t(lang, 'uploadStats')}
+                    <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="hidden" />
+                 </label>
+            </div>
 
-      {stats.length === 0 && !errorMessage ? (
-        <div className="h-64 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center text-slate-600 bg-black/20 mx-4 md:mx-0">
-           <span className="text-5xl mb-4 opacity-20">📊</span>
-           <p className="font-medium text-center px-4 tracking-wider uppercase text-xs">{t(lang, 'dropFile')}</p>
-           <p className="text-[10px] mt-2 opacity-50 font-mono">CSV: Date, Platform, Impressions, Engagement, Sentiment, Topic</p>
-        </div>
-      ) : stats.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-float">
-           
-           {/* Filters & KPIs */}
-           <div className="lg:col-span-3">
-               <div className="flex flex-col md:flex-row gap-4 mb-4 items-center glass-panel p-4 rounded-xl">
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t(lang, 'filterSentiment')}:</span>
-                   <div className="flex gap-2">
-                       {(['ALL', '0-50', '50-75', '75-100'] as SentimentFilterType[]).map(filter => (
-                           <button
-                             key={filter}
-                             onClick={() => setSentimentFilter(filter)}
-                             className={`px-3 py-1.5 rounded text-[10px] font-bold font-mono transition-all ${
-                                 sentimentFilter === filter 
-                                 ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' 
-                                 : 'bg-white/5 text-slate-500 hover:text-white'
-                             }`}
-                           >
-                               {filter === 'ALL' ? t(lang, 'filterAll') : filter}
-                           </button>
-                       ))}
-                   </div>
-                   
-                   {/* Platform Filter Badge */}
-                   {filterPlatform && (
-                        <div className="flex items-center gap-2 bg-blue-900/50 px-3 py-1 rounded text-[10px] font-bold border border-blue-500/50 text-blue-300">
-                             PLATFORM: {filterPlatform}
-                             <button onClick={() => setFilterPlatform(null)} className="hover:text-white">✕</button>
+            {errorMessage && (
+                <div className="glass-panel border-red-500/50 text-red-300 p-4 rounded-xl flex items-center gap-3 animate-pulse">
+                    <span className="text-2xl">⚠️</span>
+                    <span className="font-bold font-mono">{errorMessage}</span>
+                </div>
+            )}
+
+            {stats.length === 0 && !errorMessage ? (
+                <div className="h-64 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center text-slate-600 bg-black/20 mx-4 md:mx-0">
+                <span className="text-5xl mb-4 opacity-20">📊</span>
+                <p className="font-medium text-center px-4 tracking-wider uppercase text-xs">{t(lang, 'dropFile')}</p>
+                <p className="text-[10px] mt-2 opacity-50 font-mono">CSV: Date, Platform, Impressions, Engagement, Sentiment, Topic</p>
+                </div>
+            ) : stats.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-float">
+                
+                {/* Filters & KPIs */}
+                <div className="lg:col-span-3">
+                    <div className="flex flex-col md:flex-row gap-4 mb-4 items-center glass-panel p-4 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t(lang, 'filterSentiment')}:</span>
+                        <div className="flex gap-2">
+                            {(['ALL', '0-50', '50-75', '75-100'] as SentimentFilterType[]).map(filter => (
+                                <button
+                                    key={filter}
+                                    onClick={() => setSentimentFilter(filter)}
+                                    className={`px-3 py-1.5 rounded text-[10px] font-bold font-mono transition-all ${
+                                        sentimentFilter === filter 
+                                        ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' 
+                                        : 'bg-white/5 text-slate-500 hover:text-white'
+                                    }`}
+                                >
+                                    {filter === 'ALL' ? t(lang, 'filterAll') : filter}
+                                </button>
+                            ))}
                         </div>
-                   )}
+                        
+                        {/* Platform Filter Badge */}
+                        {filterPlatform && (
+                                <div className="flex items-center gap-2 bg-blue-900/50 px-3 py-1 rounded text-[10px] font-bold border border-blue-500/50 text-blue-300">
+                                    PLATFORM: {filterPlatform}
+                                    <button onClick={() => setFilterPlatform(null)} className="hover:text-white">✕</button>
+                                </div>
+                        )}
 
-                   <div className="ml-auto text-[10px] text-slate-500 font-mono">
-                       INDEXING {filteredStats.length} / {stats.length} RECORDS
-                   </div>
-               </div>
-
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-panel p-5 rounded-xl border-t-2 border-t-blue-500">
-                        <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiReach')}</h4>
-                        <p className="text-2xl font-black text-white">
-                            {(filteredStats.reduce((a, b) => a + b.impressions, 0) / 1000).toFixed(1)}k
-                        </p>
-                    </div>
-                    <div className="glass-panel p-5 rounded-xl border-t-2 border-t-purple-500">
-                        <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiEng')}</h4>
-                        <p className="text-2xl font-black text-purple-400">
-                            {(filteredStats.length > 0 ? (filteredStats.reduce((a, b) => a + b.engagement, 0) / filteredStats.length).toFixed(1) : 0)}%
-                        </p>
-                    </div>
-                    <div className="glass-panel p-5 rounded-xl border-t-2 border-t-emerald-500">
-                        <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiSent')}</h4>
-                        <p className="text-2xl font-black text-emerald-400">
-                            {filteredStats.length > 0 ? Math.round(filteredStats.reduce((a, b) => a + b.sentiment_score, 0) / filteredStats.length) : 0}/100
-                        </p>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-900/40 to-slate-900 p-5 rounded-xl border border-blue-500/20 relative overflow-hidden backdrop-blur-md">
-                        <h4 className="text-blue-300 text-[10px] uppercase font-bold tracking-widest relative z-10">TOP PLATFORM</h4>
-                        <p className="text-xl font-black text-white relative z-10 truncate mt-1">
-                            {analysis?.best_platform || "ANALYZING..."}
-                        </p>
-                        <div className="absolute -top-2 -right-2 p-4 opacity-10 text-6xl rotate-12">🏆</div>
-                    </div>
-               </div>
-           </div>
-
-           {/* Chart 1: Impressions Trend (Area Chart) */}
-           <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
-              <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> IMPRESSIONS TREND
-              </h3>
-              <ResponsiveContainer width="100%" height="85%">
-                <AreaChart data={filteredStats}>
-                  <defs>
-                    <linearGradient id="colorImp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickFormatter={(str) => str.substring(5)} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="impressions" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorImp)" />
-                </AreaChart>
-              </ResponsiveContainer>
-           </div>
-
-           {/* AI Campaign Manager Report (Side Panel) */}
-           <div className="lg:row-span-2 bg-slate-950/40 backdrop-blur-xl rounded-xl p-0 border border-white/5 flex flex-col shadow-2xl relative overflow-hidden">
-              <div className="p-6 border-b border-white/5 bg-white/5">
-                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] text-lg">
-                        <span className="animate-pulse">📊</span>
-                    </div>
-                    <div>
-                        <h3 className="text-white font-bold text-xs uppercase tracking-widest">Campaign Manager</h3>
-                        <p className="text-[9px] text-blue-400 font-mono">AGENT STATUS: ACTIVE</p>
-                    </div>
-                 </div>
-              </div>
-
-              {analysis ? (
-                 <div className="space-y-6 flex-1 text-xs p-6 overflow-y-auto custom-scrollbar">
-                    
-                    {/* Executive Summary Section */}
-                    <div className="bg-gradient-to-r from-blue-900/10 to-transparent p-4 rounded-lg border-l-2 border-blue-500">
-                      <h4 className="text-blue-400 font-bold uppercase text-[10px] mb-2 tracking-widest">Executive Summary</h4>
-                      <p className="text-slate-300 leading-relaxed font-light italic">"{analysis.summary}"</p>
-                    </div>
-                    
-                    {/* Trends Section */}
-                    <div>
-                       <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
-                         <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
-                         {t(lang, 'trendsTitle')}
-                       </h4>
-                       <ul className="space-y-2">
-                          {analysis.trends.map((t, i) => (
-                             <li key={i} className="flex items-start gap-3 text-slate-400 border-b border-dashed border-white/5 pb-2">
-                                <span className="text-emerald-500 font-mono">0{i+1}</span> 
-                                <span className="leading-tight">{t}</span>
-                             </li>
-                          ))}
-                       </ul>
+                        <div className="ml-auto text-[10px] text-slate-500 font-mono">
+                            INDEXING {filteredStats.length} / {stats.length} RECORDS
+                        </div>
                     </div>
 
-                    {/* Recommendations Section */}
-                    <div>
-                       <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
-                         <span className="w-1 h-1 rounded-full bg-purple-500"></span>
-                         {t(lang, 'recTitle')}
-                       </h4>
-                       <ul className="space-y-2">
-                          {analysis.recommendations.map((r, i) => (
-                             <li key={i} className="bg-white/5 p-3 rounded text-slate-300 shadow-sm border border-white/5 hover:bg-white/10 transition-colors cursor-default">
-                                <span className="block text-purple-400 font-bold text-[9px] mb-1">STRATEGY {i+1}</span>
-                                {r}
-                             </li>
-                          ))}
-                       </ul>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="glass-panel p-5 rounded-xl border-t-2 border-t-blue-500">
+                                <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiReach')}</h4>
+                                <p className="text-2xl font-black text-white">
+                                    {(filteredStats.reduce((a, b) => a + b.impressions, 0) / 1000).toFixed(1)}k
+                                </p>
+                            </div>
+                            <div className="glass-panel p-5 rounded-xl border-t-2 border-t-purple-500">
+                                <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiEng')}</h4>
+                                <p className="text-2xl font-black text-purple-400">
+                                    {(filteredStats.length > 0 ? (filteredStats.reduce((a, b) => a + b.engagement, 0) / filteredStats.length).toFixed(1) : 0)}%
+                                </p>
+                            </div>
+                            <div className="glass-panel p-5 rounded-xl border-t-2 border-t-emerald-500">
+                                <h4 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">{t(lang, 'kpiSent')}</h4>
+                                <p className="text-2xl font-black text-emerald-400">
+                                    {filteredStats.length > 0 ? Math.round(filteredStats.reduce((a, b) => a + b.sentiment_score, 0) / filteredStats.length) : 0}/100
+                                </p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-900/40 to-slate-900 p-5 rounded-xl border border-blue-500/20 relative overflow-hidden backdrop-blur-md">
+                                <h4 className="text-blue-300 text-[10px] uppercase font-bold tracking-widest relative z-10">TOP PLATFORM</h4>
+                                <p className="text-xl font-black text-white relative z-10 truncate mt-1">
+                                    {analysis?.best_platform || "ANALYZING..."}
+                                </p>
+                                <div className="absolute -top-2 -right-2 p-4 opacity-10 text-6xl rotate-12">🏆</div>
+                            </div>
                     </div>
-                 </div>
-              ) : (
-                 <div className="flex-1 flex items-center justify-center flex-col text-slate-600">
-                    <div className="w-12 h-12 border-2 border-white/10 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                    <p className="text-[10px] font-mono uppercase tracking-widest">Generating Strategic Report...</p>
-                 </div>
-              )}
-           </div>
+                </div>
 
-           {/* Chart 2: Engagement by Platform (Bar Chart) with Interactive Filtering */}
-           <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> ENGAGEMENT BY PLATFORM
-                </h3>
-                {filterPlatform && (
-                    <span className="text-[9px] text-blue-400 uppercase tracking-widest animate-pulse">
-                        * Filter Active: {filterPlatform}
-                    </span>
-                )}
-              </div>
-              <ResponsiveContainer width="100%" height="85%">
-                <BarChart data={filteredStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="platform" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend 
-                    onClick={handleLegendClick} 
-                    wrapperStyle={{ cursor: 'pointer', fontSize: '10px', paddingTop: '10px' }} 
-                    formatter={(value) => <span style={{ color: '#cbd5e1' }}>{value} {filterPlatform === value ? '(Selected)' : ''}</span>}
-                  />
-                  <Bar 
-                    dataKey="engagement" 
-                    fill="#8884d8" 
-                    radius={[4, 4, 0, 0]} 
-                    name="Engagement" 
-                    cursor="pointer" 
-                    onClick={(data: any) => setFilterPlatform(prev => prev === (data.platform || data.payload?.platform) ? null : (data.platform || data.payload?.platform))}
-                  >
-                    {
-                      filteredStats.map((entry, index) => (
-                        <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.platform === 'TikTok' ? '#db2777' : entry.platform === 'X' ? '#94a3b8' : '#8b5cf6'} 
-                            opacity={filterPlatform && filterPlatform !== entry.platform ? 0.3 : 1}
+                {/* Chart 1: Impressions Trend (Area Chart) */}
+                <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
+                    <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> IMPRESSIONS TREND
+                    </h3>
+                    <ResponsiveContainer width="100%" height="85%">
+                        <AreaChart data={filteredStats}>
+                        <defs>
+                            <linearGradient id="colorImp" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickFormatter={(str) => str.substring(5)} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                        <RechartsTooltip content={<CustomTooltip />} />
+                        <Area type="monotone" dataKey="impressions" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorImp)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* AI Campaign Manager Report (Side Panel) */}
+                <div className="lg:row-span-2 bg-slate-950/40 backdrop-blur-xl rounded-xl p-0 border border-white/5 flex flex-col shadow-2xl relative overflow-hidden">
+                    <div className="p-6 border-b border-white/5 bg-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] text-lg">
+                                <span className="animate-pulse">📊</span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs uppercase tracking-widest">Campaign Manager</h3>
+                                <p className="text-[9px] text-blue-400 font-mono">AGENT STATUS: ACTIVE</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {analysis ? (
+                        <div className="space-y-6 flex-1 text-xs p-6 overflow-y-auto custom-scrollbar">
+                            
+                            {/* Executive Summary Section */}
+                            <div className="bg-gradient-to-r from-blue-900/10 to-transparent p-4 rounded-lg border-l-2 border-blue-500">
+                            <h4 className="text-blue-400 font-bold uppercase text-[10px] mb-2 tracking-widest">Executive Summary</h4>
+                            <p className="text-slate-300 leading-relaxed font-light italic">"{analysis.summary}"</p>
+                            </div>
+                            
+                            {/* Trends Section */}
+                            <div>
+                            <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
+                                <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
+                                {t(lang, 'trendsTitle')}
+                            </h4>
+                            <ul className="space-y-2">
+                                {analysis.trends.map((t, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-slate-400 border-b border-dashed border-white/5 pb-2">
+                                        <span className="text-emerald-500 font-mono">0{i+1}</span> 
+                                        <span className="leading-tight">{t}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            </div>
+
+                            {/* Recommendations Section */}
+                            <div>
+                            <h4 className="text-white font-bold uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2">
+                                <span className="w-1 h-1 rounded-full bg-purple-500"></span>
+                                {t(lang, 'recTitle')}
+                            </h4>
+                            <ul className="space-y-2">
+                                {analysis.recommendations.map((r, i) => (
+                                    <li key={i} className="bg-white/5 p-3 rounded text-slate-300 shadow-sm border border-white/5 hover:bg-white/10 transition-colors cursor-default">
+                                        <span className="block text-purple-400 font-bold text-[9px] mb-1">STRATEGY {i+1}</span>
+                                        {r}
+                                    </li>
+                                ))}
+                            </ul>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center flex-col text-slate-600">
+                            <div className="w-12 h-12 border-2 border-white/10 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                            <p className="text-[10px] font-mono uppercase tracking-widest">Generating Strategic Report...</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Chart 2: Engagement by Platform (Bar Chart) with Interactive Filtering */}
+                <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> ENGAGEMENT BY PLATFORM
+                        </h3>
+                        {filterPlatform && (
+                            <span className="text-[9px] text-blue-400 uppercase tracking-widest animate-pulse">
+                                * Filter Active: {filterPlatform}
+                            </span>
+                        )}
+                    </div>
+                    <ResponsiveContainer width="100%" height="85%">
+                        <BarChart data={filteredStats}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                        <XAxis dataKey="platform" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                        <RechartsTooltip content={<CustomTooltip />} />
+                        <Legend 
+                            onClick={handleLegendClick} 
+                            wrapperStyle={{ cursor: 'pointer', fontSize: '10px', paddingTop: '10px' }} 
+                            formatter={(value) => <span style={{ color: '#cbd5e1' }}>{value} {filterPlatform === value ? '(Selected)' : ''}</span>}
                         />
-                      ))
-                    }
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <p className="text-center text-[9px] text-slate-600 mt-2 font-mono">
-                  * Click bars or legend to filter data
-              </p>
-           </div>
+                        <Bar 
+                            dataKey="engagement" 
+                            fill="#8884d8" 
+                            radius={[4, 4, 0, 0]} 
+                            name="Engagement" 
+                            cursor="pointer" 
+                            onClick={(data: any) => setFilterPlatform(prev => prev === (data.platform || data.payload?.platform) ? null : (data.platform || data.payload?.platform))}
+                        >
+                            {
+                            filteredStats.map((entry, index) => (
+                                <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={entry.platform === 'TikTok' ? '#db2777' : entry.platform === 'X' ? '#94a3b8' : '#8b5cf6'} 
+                                    opacity={filterPlatform && filterPlatform !== entry.platform ? 0.3 : 1}
+                                />
+                            ))
+                            }
+                        </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                    <p className="text-center text-[9px] text-slate-600 mt-2 font-mono">
+                        * Click bars or legend to filter data
+                    </p>
+                </div>
 
-        </div>
+                </div>
+            )}
+          </>
+      ) : (
+          /* LIVE TREND SCANNER TAB */
+          <div className="animate-fade-in-up space-y-8">
+              <div className="glass-panel p-6 rounded-xl border border-pink-500/20 bg-pink-900/5">
+                  <h3 className="text-pink-400 font-bold uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
+                     <span className="text-lg">📡</span> {t(lang, 'scanTitle')}
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                      <div>
+                          <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2">{t(lang, 'scanDate')}</label>
+                          <input 
+                            type="date" 
+                            value={trendDate}
+                            onChange={(e) => setTrendDate(e.target.value)}
+                            className="w-full glass-input p-3 rounded text-white text-sm"
+                          />
+                      </div>
+                      <div>
+                          <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2">{t(lang, 'scanLoc')}</label>
+                          <input 
+                             type="text" 
+                             value={trendLocation} 
+                             onChange={(e) => setTrendLocation(e.target.value)}
+                             placeholder="e.g. Colombia, Medellín, Bogotá" 
+                             className="w-full glass-input p-3 rounded text-white text-sm"
+                          />
+                      </div>
+                      <button 
+                         onClick={handleScanTrends}
+                         disabled={loading}
+                         className="h-[46px] bg-pink-600 hover:bg-pink-500 text-white font-bold uppercase tracking-widest text-xs rounded shadow-[0_0_15px_rgba(219,39,119,0.3)] transition-all flex items-center justify-center gap-2"
+                      >
+                         {loading ? "SCANNING..." : t(lang, 'scanBtn')}
+                      </button>
+                  </div>
+              </div>
+
+              {trendResults && (
+                  <div className="animate-fade-in-up">
+                      <div className="flex items-center gap-4 mb-6">
+                          <h3 className="text-2xl font-black text-white uppercase">{t(lang, 'trendResults')}</h3>
+                          <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-1 rounded font-mono border border-white/10">
+                             {trendResults.date} @ {trendResults.location}
+                          </span>
+                      </div>
+
+                      {/* Executive Summary */}
+                      <div className="glass-panel p-6 rounded-xl border-l-4 border-pink-500 mb-8 bg-gradient-to-r from-pink-900/10 to-transparent">
+                          <h4 className="text-pink-400 font-bold uppercase text-[10px] mb-2 tracking-widest">Digital Atmosphere Summary</h4>
+                          <p className="text-slate-200 leading-relaxed text-sm">{trendResults.summary}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          {/* Top Trends List */}
+                          <div className="space-y-4">
+                              <h4 className="text-slate-500 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Top Viral Topics</h4>
+                              {trendResults.topTrends.map((trend, i) => (
+                                  <div key={i} className="glass-panel p-4 rounded-lg flex items-start gap-4 hover:bg-white/5 transition-colors group">
+                                      <div className="text-3xl font-black text-white/10 group-hover:text-pink-500/50 transition-colors">
+                                          0{trend.rank}
+                                      </div>
+                                      <div className="flex-1">
+                                          <div className="flex justify-between items-start">
+                                              <h5 className="text-white font-bold text-lg leading-tight mb-1">{trend.topic}</h5>
+                                              <span className={`text-[9px] px-2 py-0.5 rounded uppercase font-bold ${
+                                                  trend.sentiment === 'Positive' ? 'bg-emerald-900/40 text-emerald-400' :
+                                                  trend.sentiment === 'Negative' ? 'bg-red-900/40 text-red-400' : 'bg-slate-800 text-slate-400'
+                                              }`}>
+                                                  {trend.sentiment}
+                                              </span>
+                                          </div>
+                                          <p className="text-slate-400 text-xs mb-2 leading-snug">{trend.description}</p>
+                                          <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+                                              <span className="flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                  {trend.platformSource}
+                                              </span>
+                                              {trend.volume && (
+                                                  <span className="text-pink-400/80">
+                                                      Vol: {trend.volume}
+                                                  </span>
+                                              )}
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+
+                          {/* Breaking News Feed */}
+                          <div>
+                              <h4 className="text-slate-500 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2 mb-4">Headlines & Context</h4>
+                              <div className="glass-panel p-0 rounded-xl overflow-hidden">
+                                  {trendResults.breakingNews.map((news, i) => (
+                                      <div key={i} className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors flex gap-3">
+                                          <span className="text-slate-600 font-mono text-xs mt-1">[{i+1}]</span>
+                                          <p className="text-slate-300 text-sm leading-snug">{news}</p>
+                                      </div>
+                                  ))}
+                              </div>
+                              
+                              {/* Decorative Element */}
+                              <div className="mt-6 p-4 rounded-lg bg-emerald-900/10 border border-emerald-500/20 text-center">
+                                  <p className="text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-1">AI Recommendation</p>
+                                  <p className="text-white text-xs">
+                                      "Align today's content strategy with topic <strong>#{trendResults.topTrends[0]?.topic || 'Trending'}</strong> to maximize organic reach."
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              )}
+          </div>
       )}
     </div>
   );

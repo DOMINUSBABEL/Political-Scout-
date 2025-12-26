@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { Language, CandidateProfile, TargetSegment, AdCampaign } from '../types';
-import { generateAdCampaign, generateMarketingImage, generateMarketingAudio } from '../services/geminiService';
+import { generateAdCampaign, generateMarketingImage, generateMarketingAudio, generateSegments } from '../services/geminiService';
 import { t } from '../utils/translations';
 import { ThinkingConsole } from './ThinkingConsole';
 import { ProgressBar } from './ProgressBar';
@@ -13,12 +13,6 @@ interface Props {
 }
 
 const VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'];
-
-// Helper to convert base64 PCM to WAV for playback
-const pcmToWav = (base64: string) => {
-    // This is a simplified placeholder. In a real app, we'd add a WAV header to the raw PCM data.
-    return base64;
-};
 
 // Data Sets
 const medellinComunas = [
@@ -56,579 +50,296 @@ const antioquiaMunicipios = [
 ];
 
 export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
-  const [region, setRegion] = useState('Medellín - General');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [region, setRegion] = useState(medellinComunas[0]);
+  const [deepResearch, setDeepResearch] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingImageId, setLoadingImageId] = useState<string | null>(null);
+  const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
   const [segments, setSegments] = useState<TargetSegment[]>([]);
-  const [granularity, setGranularity] = useState(2); // 1 = Low, 2 = Medium, 3 = High
-  const [searchStatus, setSearchStatus] = useState('');
-  const [deepResearch, setDeepResearch] = useState(true); 
-  const [analysisReasoning, setAnalysisReasoning] = useState<string>('');
-  
-  // Progress Bar
-  const [progress, setProgress] = useState(0);
+  const [expandedSegment, setExpandedSegment] = useState<string | null>(null);
 
-  // Ad Campaign Generation States
-  const [generatingAdFor, setGeneratingAdFor] = useState<string | null>(null);
-  const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
-  const [generatingAudioFor, setGeneratingAudioFor] = useState<string | null>(null);
-  
-  // Audio State
-  const [selectedVoice, setSelectedVoice] = useState('Kore');
-  const [customVoiceFile, setCustomVoiceFile] = useState<string | null>(null);
-
-  // Playback refs
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const [isPlaying, setIsPlaying] = useState<string | null>(null);
-  const fileInputRefs = useRef<{[key: string]: HTMLInputElement | null}>({});
-
-  useEffect(() => {
-    let interval: any;
-    if (isGenerating) {
-      setProgress(5);
-      interval = setInterval(() => {
-        setProgress((prev) => {
-             const remaining = 95 - prev;
-             return prev + (remaining * 0.05); // Move 5% of the remaining distance
-        });
-      }, 500);
-    } else {
-      setProgress(100);
-      setTimeout(() => setProgress(0), 800);
-    }
-    return () => clearInterval(interval);
-  }, [isGenerating]);
-
-  const generateSegments = async () => {
-    setIsGenerating(true);
-    setSearchStatus('INITIALIZING AGENT...');
+  const handleGenerateSegments = async () => {
+    setLoading(true);
     setSegments([]);
-    setAnalysisReasoning('');
-
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    // Updated Prompt to enforce Search Grounding (Scouting)
-    const prompt = `
-      ROLE: Elite Political Data Scout & Strategist.
-      CANDIDATE: ${activeProfile.name} (${activeProfile.styleDescription}).
-      
-      MISSION:
-      Perform LIVE WEB RECONNAISSANCE to identify specific voter segments in the region: "${region}".
-      
-      ${deepResearch ? "MODE: DEEP RESEARCH ENABLED. Search extensively for recent news and stats." : ""}
-
-      INSTRUCTIONS:
-      1. USE GOOGLE SEARCH to find real, up-to-date data. Do not hallucinate.
-      2. SEARCH TARGETS:
-         - "Demografía DANE ${region} 2023 2024" (Look for age/gender distribution, income levels).
-         - "Problemas sociales ${region} noticias recientes" (Identify pain points like security, mobility, hunger).
-         - "Plan de Desarrollo ${region}" (To identify neglected zones).
-      3. SYNTHESIZE the search results into ${3 + granularity * 2} distinct, high-value voter segments.
-      
-      SEGMENTATION LOGIC:
-      - Cross-reference Demographics (Age/Gender) + Location + Current Events (Pain Points).
-      - Example: If news says "Water shortages in ${region}", create a segment "Madres Afectadas por Cortes de Agua".
-
-      OUTPUT REQUIREMENT:
-      Return valid JSON containing the segments AND a 'thoughtProcess' field summarizing your findings.
-    `;
-
     try {
-      setSearchStatus('SCOUTING WEB DATA (DANE/NEWS)...');
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }], // ENABLE WEB SCOUTING
-          thinkingConfig: deepResearch ? { thinkingBudget: 2048 } : undefined,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              thoughtProcess: { type: Type.STRING },
-              segments: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    name: { type: Type.STRING },
-                    demographics: {
-                      type: Type.OBJECT,
-                      properties: {
-                        ageRange: { type: Type.STRING },
-                        gender: { type: Type.STRING },
-                        location: { type: Type.STRING }
-                      }
-                    },
-                    estimatedSize: { type: Type.NUMBER },
-                    affinityScore: { type: Type.NUMBER },
-                    topInterests: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    painPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    recommendedStrategy: { type: Type.STRING }
-                  }
-                }
-              }
+        const results = await generateSegments(region, activeProfile, deepResearch);
+        setSegments(results);
+    } catch (e) {
+        console.error(e);
+        alert("Failed to generate segments. Check API Key.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleGenerateAd = async (segmentId: string) => {
+    // Only generate the Text/Plan first. Image is manual.
+    const segment = segments.find(s => s.id === segmentId);
+    if (!segment) return;
+
+    setLoading(true);
+    try {
+        const campaign = await generateAdCampaign(segment, activeProfile);
+        
+        // Update segment with campaign (but no image/audio yet)
+        setSegments(prev => prev.map(s => {
+            if (s.id === segmentId) {
+                return { ...s, adCampaign: campaign };
             }
-          }
-        }
-      });
-
-      setSearchStatus('PROCESSING INTELLIGENCE...');
-      const data = JSON.parse(response.text || "{}");
-      
-      if (data.segments) {
-        setSegments(data.segments);
-      }
-      if (data.thoughtProcess) {
-        setAnalysisReasoning(data.thoughtProcess);
-      }
+            return s;
+        }));
+        setExpandedSegment(segmentId);
     } catch (e) {
-      console.error(e);
-      setSegments([]);
+        console.error(e);
     } finally {
-      setIsGenerating(false);
-      setSearchStatus('');
+        setLoading(false);
     }
   };
 
-  const handleGenerateAd = async (segment: TargetSegment) => {
-      setGeneratingAdFor(segment.id);
-      try {
-          const campaign = await generateAdCampaign(segment, activeProfile);
-          setSegments(prev => prev.map(s => 
-              s.id === segment.id ? { ...s, adCampaign: campaign } : s
-          ));
-      } catch (err) {
-          console.error("Ad Gen Failed", err);
-      } finally {
-          setGeneratingAdFor(null);
-      }
-  };
+  const handleGenerateImage = async (segmentId: string) => {
+    const segment = segments.find(s => s.id === segmentId);
+    if (!segment || !segment.adCampaign) return;
 
-  const handleGenerateImage = async (segment: TargetSegment, aspectRatio: string) => {
-    if (!segment.adCampaign?.visualPrompt) return;
-    setGeneratingImageFor(segment.id);
+    setLoadingImageId(segmentId);
     try {
-        const imageUrl = await generateMarketingImage(segment.adCampaign.visualPrompt, aspectRatio);
-        setSegments(prev => prev.map(s => 
-            s.id === segment.id && s.adCampaign
-              ? { ...s, adCampaign: { ...s.adCampaign, generatedImageUrl: imageUrl, imageAspectRatio: aspectRatio as any } } 
-              : s
-        ));
-    } catch (err) {
-        console.error("Image Gen Failed", err);
-        alert("Failed to generate image. Try again.");
-    } finally {
-        setGeneratingImageFor(null);
-    }
-  };
-
-  const handleCustomImageUpload = (e: React.ChangeEvent<HTMLInputElement>, segmentId: string) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setSegments(prev => prev.map(s => 
-          s.id === segmentId && s.adCampaign
-            ? { ...s, adCampaign: { ...s.adCampaign, generatedImageUrl: base64 } } 
-            : s
-        ));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGenerateAudio = async (segment: TargetSegment) => {
-      if (!segment.adCampaign?.audioScript) return;
-      setGeneratingAudioFor(segment.id);
-      try {
-          // If a custom voice file is uploaded, in a real scenario we'd clone it.
-          // Here, we simulate using the 'custom' context by picking a voice or just using the standard one.
-          const audioBase64 = await generateMarketingAudio(segment.adCampaign.audioScript, selectedVoice);
-          setSegments(prev => prev.map(s => 
-              s.id === segment.id && s.adCampaign
-                ? { ...s, adCampaign: { ...s.adCampaign, generatedAudioUrl: audioBase64 } } 
-                : s
-          ));
-      } catch (err) {
-          console.error("Audio Gen Failed", err);
-      } finally {
-          setGeneratingAudioFor(null);
-      }
-  };
-
-  const playAudio = async (base64Audio: string, id: string) => {
-    try {
-        if (isPlaying === id) {
-            audioSourceRef.current?.stop();
-            setIsPlaying(null);
-            return;
-        }
-
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-
-        const binaryString = atob(base64Audio);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
+        const imageUrl = await generateMarketingImage(
+            segment.adCampaign.visualPrompt, 
+            segment.adCampaign.imageAspectRatio
+        );
         
-        const audioBuffer = await audioContextRef.current.decodeAudioData(bytes.buffer);
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContextRef.current.destination);
-        source.start(0);
-        audioSourceRef.current = source;
-        setIsPlaying(id);
-        
-        source.onended = () => setIsPlaying(null);
-
+        setSegments(prev => prev.map(s => {
+            if (s.id === segmentId && s.adCampaign) {
+                return { 
+                    ...s, 
+                    adCampaign: { ...s.adCampaign, generatedImageUrl: imageUrl } 
+                };
+            }
+            return s;
+        }));
     } catch (e) {
-        console.error("Playback error", e);
+        console.error("Image Gen Failed", e);
+    } finally {
+        setLoadingImageId(null);
     }
   };
 
-  const handleExport = () => {
-      if (segments.length === 0) return;
-      const exportData = {
-          region,
-          generated_at: new Date().toISOString(),
-          segments: segments
-      };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `CandidatoAI_Targeting_${region.replace(/\s/g, '_')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+  const handleGenerateAudio = async (segmentId: string) => {
+    const segment = segments.find(s => s.id === segmentId);
+    if (!segment || !segment.adCampaign) return;
+
+    setLoadingAudioId(segmentId);
+    try {
+        const audioUrl = await generateMarketingAudio(segment.adCampaign.audioScript);
+        setSegments(prev => prev.map(s => {
+            if (s.id === segmentId && s.adCampaign) {
+                return { 
+                    ...s, 
+                    adCampaign: { ...s.adCampaign, generatedAudioUrl: audioUrl } 
+                };
+            }
+            return s;
+        }));
+    } catch (e) {
+        console.error("Audio Gen Failed", e);
+    } finally {
+        setLoadingAudioId(null);
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20 animate-fade-in-up">
-      <ProgressBar 
-          active={isGenerating} 
-          progress={progress} 
-          label={t(lang, 'scouting')}
-          estimatedSeconds={deepResearch ? 25 : 15}
-      />
-      
+    <div className="max-w-7xl mx-auto pb-20 space-y-8">
+      <ProgressBar active={loading || !!loadingImageId || !!loadingAudioId} progress={loading ? 40 : 90} label="PROCESSING" />
+
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4">
-        <div>
-           <h1 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
-             <span className="w-2 h-8 bg-purple-500 rounded-full"></span>
-             {t(lang, 'targetTitle')}
-           </h1>
-           <p className="text-slate-400 mt-2 font-mono text-xs uppercase tracking-wider pl-5">// {t(lang, 'targetSubtitle')}</p>
-        </div>
-        {segments.length > 0 && (
-            <button 
-              onClick={handleExport}
-              className="px-4 py-2 bg-purple-900/30 border border-purple-500/30 rounded font-mono text-[10px] uppercase tracking-widest text-purple-300 hover:text-white hover:bg-purple-600/50 transition-all flex items-center gap-2"
-            >
-                <span>💾</span> Export Segments
-            </button>
-        )}
+      <div className="border-b border-white/5 pb-6">
+        <h1 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
+            <span className="w-2 h-8 bg-purple-500 skew-x-12"></span>
+            {t(lang, 'targetTitle')}
+        </h1>
+        <p className="text-slate-400 mt-2 font-mono text-xs uppercase tracking-wider pl-5">// {t(lang, 'targetSubtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Control Panel */}
+      <div className="glass-panel p-6 rounded-xl animate-fade-in-up">
+        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">{t(lang, 'paramsTitle')}</h3>
         
-        {/* Controls Panel */}
-        <div className="glass-panel p-6 rounded-xl space-y-8 h-fit">
-           <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
-              <span className="text-xl">🎛️</span>
-              <h3 className="font-bold text-white uppercase tracking-widest text-xs">{t(lang, 'paramsTitle')}</h3>
-           </div>
-
-           {/* Region Selector */}
-           <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">{t(lang, 'regionSelect')}</label>
-              <select 
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="w-full glass-input p-3 rounded text-white text-sm custom-scrollbar"
-              >
-                <option value="Medellín - General">Medellín (Todas las zonas)</option>
-                <option value="Antioquia - General">Antioquia (Todo el departamento)</option>
-                
-                <optgroup label="Medellín - Comunas">
-                  {medellinComunas.map(c => <option key={c} value={c}>{c}</option>)}
-                </optgroup>
-                
-                <optgroup label="Medellín - Corregimientos">
-                  {medellinCorregimientos.map(c => <option key={c} value={`Corregimiento ${c}`}>{c}</option>)}
-                </optgroup>
-
-                <optgroup label="Valle de Aburrá (Área Metro)">
-                  {areaMetropolitana.map(m => <option key={m} value={m}>{m}</option>)}
-                </optgroup>
-
-                <optgroup label="Municipios de Antioquia">
-                   {antioquiaMunicipios.map(m => <option key={m} value={m}>{m}</option>)}
-                </optgroup>
-              </select>
-           </div>
-
-           {/* Granularity Slider */}
-           <div className="space-y-4">
-              <div className="flex justify-between">
-                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Specificity</label>
-                <span className="text-[10px] font-mono text-emerald-400">{granularity === 1 ? 'LOW (Broad)' : granularity === 2 ? 'MED (Standard)' : 'HIGH (Micro)'}</span>
-              </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="3" 
-                step="1" 
-                value={granularity} 
-                onChange={(e) => setGranularity(parseInt(e.target.value))}
-                className="w-full accent-emerald-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-              />
-           </div>
-
-           {/* Data Sources Badge & Deep Research */}
-           <div className="bg-black/20 p-4 rounded border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]">
-              <div className="flex items-center justify-between mb-2">
-                 <span className="text-[9px] text-emerald-400 uppercase font-bold block">Live Web Intelligence</span>
-                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-              </div>
-              
-              <div 
-                  onClick={() => setDeepResearch(!deepResearch)}
-                  className={`mb-3 flex items-center gap-2 p-2 rounded cursor-pointer transition-all border ${deepResearch ? 'bg-purple-900/40 border-purple-500' : 'bg-black/40 border-white/5'}`}
-              >
-                   <div className={`w-3 h-3 rounded-full border ${deepResearch ? 'bg-purple-500 border-white' : 'border-slate-500'}`}></div>
-                   <span className={`text-[9px] font-bold uppercase ${deepResearch ? 'text-white' : 'text-slate-500'}`}>Deep Research Mode</span>
-              </div>
-           </div>
-
-           <button 
-             onClick={generateSegments}
-             disabled={isGenerating}
-             className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(147,51,234,0.3)] uppercase tracking-[0.2em] text-xs transition-all relative overflow-hidden group"
-           >
-             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-             {isGenerating ? (
-               <div className="flex items-center justify-center gap-2 relative z-10">
-                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span className="animate-pulse">{searchStatus}</span>
-               </div>
-             ) : (
-               <span className="relative z-10">{t(lang, 'genSegments')}</span>
-             )}
-           </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label className="block text-xs font-bold text-white mb-2">{t(lang, 'regionSelect')}</label>
+                <select 
+                    value={region} 
+                    onChange={(e) => setRegion(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:border-purple-500 outline-none transition-colors"
+                >
+                    <optgroup label="Medellín - Comunas">
+                        {medellinComunas.map(c => <option key={c} value={c}>{c}</option>)}
+                    </optgroup>
+                    <optgroup label="Medellín - Corregimientos">
+                        {medellinCorregimientos.map(c => <option key={c} value={c}>{c}</option>)}
+                    </optgroup>
+                    <optgroup label="Área Metropolitana">
+                        {areaMetropolitana.map(c => <option key={c} value={c}>{c}</option>)}
+                    </optgroup>
+                    <optgroup label="Antioquia">
+                         {antioquiaMunicipios.map(c => <option key={c} value={c}>{c}</option>)}
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div 
+                onClick={() => setDeepResearch(!deepResearch)}
+                className={`border rounded p-4 cursor-pointer transition-all flex items-center gap-4 ${
+                    deepResearch 
+                    ? 'bg-purple-900/20 border-purple-500/50' 
+                    : 'bg-black/20 border-white/10 hover:bg-white/5'
+                }`}
+            >
+                <div className={`w-6 h-6 rounded flex items-center justify-center border ${deepResearch ? 'bg-purple-500 border-purple-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</div>
+                <div>
+                    <span className="block text-sm font-bold text-white">Enable Deep Research</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Real-time Data (News, Census, Trends)</span>
+                </div>
+            </div>
         </div>
 
-        {/* Results Grid */}
-        <div className="lg:col-span-2 space-y-6">
-           <ThinkingConsole isVisible={isGenerating} mode="TARGETING" isDeepResearch={deepResearch} />
-           
-           {/* REASONING PANEL */}
-           {analysisReasoning && !isGenerating && (
-              <div className="glass-panel p-4 rounded-lg border-l-4 border-purple-500 bg-purple-900/10 animate-fade-in-up">
-                 <h4 className="text-purple-400 font-bold uppercase text-[10px] tracking-widest mb-2 flex items-center gap-2">
-                   <span>🧠</span> Segmentation Logic
-                 </h4>
-                 <p className="text-slate-300 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-                   {analysisReasoning}
-                 </p>
-              </div>
-           )}
+        <ThinkingConsole isVisible={loading} mode="TARGETING" isDeepResearch={deepResearch} />
 
-           {segments.length === 0 && !isGenerating ? (
-             <div className="h-full flex flex-col items-center justify-center glass-panel rounded-xl p-12 text-slate-600 border-dashed border-2 border-slate-700">
-                <span className="text-6xl mb-4 opacity-20">🎯</span>
-                <p className="text-sm font-mono uppercase tracking-widest">Select region and generate segments</p>
-             </div>
-           ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {segments.map((seg, idx) => (
-                 <div key={idx} className="glass-panel p-5 rounded-xl border-l-4 border-l-purple-500 hover:bg-white/5 transition-all group relative overflow-hidden animate-fade-in-up" style={{ animationDelay: `${idx * 100}ms` }}>
-                    {/* Background Affinity Gradient */}
-                    <div 
-                      className="absolute top-0 right-0 h-full w-1/2 opacity-10 pointer-events-none bg-gradient-to-l from-purple-500 to-transparent"
-                      style={{ opacity: (seg.affinityScore || 0) / 500 }}
-                    ></div>
-
-                    <div className="flex justify-between items-start mb-3 relative z-10">
-                       <h3 className="font-bold text-white text-sm uppercase tracking-wider pr-2">{seg.name}</h3>
-                       <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded border whitespace-nowrap ${
-                         (seg.affinityScore || 0) > 75 ? 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50' :
-                         (seg.affinityScore || 0) > 50 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-500/50' :
-                         'bg-red-900/50 text-red-400 border-red-500/50'
-                       }`}>
-                         {seg.affinityScore || 0}% AFFINITY
-                       </span>
-                    </div>
-
-                    <div className="mb-4 relative z-10">
-                       <p className="text-[9px] uppercase font-bold text-slate-500 mb-1">Top Interests & Pain Points</p>
-                       <div className="flex flex-wrap gap-1">
-                          {(seg.topInterests || []).slice(0, 2).map((int, i) => (
-                            <span key={`int-${i}`} className="text-[9px] bg-blue-900/20 px-1.5 py-0.5 rounded text-blue-200 border border-blue-500/20">{int}</span>
-                          ))}
-                          {(seg.painPoints || []).slice(0, 2).map((pp, i) => (
-                            <span key={`pp-${i}`} className="text-[9px] bg-red-900/20 px-1.5 py-0.5 rounded text-red-200 border border-red-500/20">⚠️ {pp}</span>
-                          ))}
-                       </div>
-                    </div>
-
-                    {/* AD CAMPAIGN GENERATOR SECTION */}
-                    {seg.adCampaign ? (
-                         <div className="space-y-4 relative z-10 animate-fade-in-up">
-                            
-                            {/* VISUAL STUDIO */}
-                            <div className="bg-emerald-900/10 border border-emerald-500/20 rounded p-3">
-                                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <span>📸</span> Visual Studio
-                                </h4>
-                                
-                                {/* Image Preview */}
-                                <div className={`bg-black border border-white/10 rounded overflow-hidden mb-3 mx-auto shadow-2xl relative group/img ${
-                                    seg.adCampaign.imageAspectRatio === "16:9" ? "aspect-video" :
-                                    seg.adCampaign.imageAspectRatio === "9:16" ? "aspect-[9/16] max-w-[180px]" : "aspect-square max-w-[280px]"
-                                }`}>
-                                    {seg.adCampaign.generatedImageUrl ? (
-                                        <img src={seg.adCampaign.generatedImageUrl} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 text-[10px] text-center p-4 gap-2">
-                                            {generatingImageFor === seg.id ? (
-                                                <>
-                                                 <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                                                 <span>RENDERING 1K IMAGE...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                  <span>NO IMAGE</span>
-                                                  <span className="text-[8px] opacity-50">Select Ratio & Generate</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    {/* Overlay Actions */}
-                                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4">
-                                        <div className="flex gap-1 mb-2">
-                                            {["1:1", "16:9", "9:16"].map(ratio => (
-                                                <button 
-                                                    key={ratio}
-                                                    onClick={(e) => { e.stopPropagation(); handleGenerateImage(seg, ratio); }}
-                                                    className="px-2 py-1 bg-white/10 hover:bg-white/20 text-[9px] rounded text-white border border-white/10"
-                                                >
-                                                    {ratio}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <label className="px-3 py-1 bg-emerald-600 text-white rounded text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500 cursor-pointer">
-                                            Upload Own
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                className="hidden" 
-                                                onChange={(e) => handleCustomImageUpload(e, seg.id)} 
-                                            />
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <p className="text-[9px] text-white mb-2 font-medium bg-black/30 p-2 rounded">
-                                    <span className="text-emerald-500 font-bold mr-1">COPY:</span>
-                                    "{seg.adCampaign.copyText}"
-                                </p>
-                            </div>
-
-                            {/* AUDIO STUDIO */}
-                            <div className="bg-purple-900/10 border border-purple-500/20 rounded p-3">
-                                <h4 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <span>🎙️</span> Audio Spot Pauta X
-                                </h4>
-                                
-                                <div className="bg-black/30 p-2 rounded mb-3 max-h-20 overflow-y-auto">
-                                    <p className="text-[9px] text-slate-300 font-mono whitespace-pre-wrap">
-                                        {seg.adCampaign.audioScript}
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="flex-1">
-                                        <label className="text-[8px] uppercase font-bold text-slate-500 block mb-1">Voice Profile</label>
-                                        <select 
-                                            value={selectedVoice} 
-                                            onChange={(e) => setSelectedVoice(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded text-xs text-white p-1"
-                                        >
-                                            {VOICES.map(v => <option key={v} value={v}>{v}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="flex-1">
-                                         <label className="text-[8px] uppercase font-bold text-slate-500 block mb-1">Reference (Clone)</label>
-                                         <label className="w-full bg-black/40 border border-white/10 rounded text-xs text-slate-400 p-1 block text-center cursor-pointer hover:bg-white/5 truncate">
-                                             {customVoiceFile ? "Analysis Complete" : "Upload MP3"}
-                                             <input type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && setCustomVoiceFile(e.target.files[0].name)} />
-                                         </label>
-                                    </div>
-                                </div>
-
-                                {seg.adCampaign.generatedAudioUrl ? (
-                                    <div className="flex items-center gap-2 bg-purple-500/20 p-2 rounded border border-purple-500/50">
-                                        <button 
-                                            onClick={() => playAudio(seg.adCampaign?.generatedAudioUrl || "", seg.id)}
-                                            className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-400 text-white"
-                                        >
-                                            {isPlaying === seg.id ? "⏸" : "▶"}
-                                        </button>
-                                        <div className="flex-1">
-                                            <div className="h-1 bg-purple-900/50 rounded-full overflow-hidden">
-                                                <div className={`h-full bg-purple-400 ${isPlaying === seg.id ? "animate-pulse" : "w-full"}`}></div>
-                                            </div>
-                                            <p className="text-[8px] text-purple-300 mt-1 uppercase">Audio Generated successfully</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button 
-                                        onClick={() => handleGenerateAudio(seg)}
-                                        disabled={!!generatingAudioFor}
-                                        className="w-full py-2 bg-purple-600/20 border border-purple-500/50 text-purple-300 rounded text-[9px] font-bold uppercase hover:bg-purple-600 hover:text-white transition-all"
-                                    >
-                                        {generatingAudioFor === seg.id ? "Generating Audio..." : "Generate Audio Spot"}
-                                    </button>
-                                )}
-                            </div>
-
-                         </div>
-                    ) : (
-                        <button 
-                            onClick={() => handleGenerateAd(seg)}
-                            disabled={!!generatingAdFor}
-                            className={`w-full py-2 rounded border border-dashed font-bold text-[10px] uppercase tracking-widest transition-all relative z-10 ${
-                                generatingAdFor === seg.id 
-                                ? 'bg-slate-800 border-slate-600 text-slate-400 cursor-wait' 
-                                : 'bg-transparent border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500'
-                            }`}
-                        >
-                            {generatingAdFor === seg.id ? (
-                                <span className="animate-pulse">GENERATING CAMPAIGN...</span>
-                            ) : (
-                                <span>+ {t(lang, 'genAdBtn')}</span>
-                            )}
-                        </button>
-                    )}
-
-                 </div>
-               ))}
-             </div>
-           )}
-        </div>
-
+        <button 
+            onClick={handleGenerateSegments}
+            disabled={loading}
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg uppercase tracking-[0.2em] text-xs shadow-lg transition-all"
+        >
+            {loading ? "ANALYZING POPULATION..." : t(lang, 'genSegments')}
+        </button>
       </div>
+
+      {/* Results Grid */}
+      {segments.length > 0 && (
+          <div className="grid grid-cols-1 gap-6 animate-fade-in-up">
+              {segments.map((seg, idx) => (
+                  <div key={seg.id} className="glass-panel rounded-xl overflow-hidden border border-white/10 relative group">
+                      
+                      {/* Segment Header Card */}
+                      <div className="p-6 md:p-8 flex flex-col md:flex-row gap-6 relative z-10 bg-black/20">
+                          <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                  <span className="text-purple-500 font-mono font-bold text-xs">0{idx+1}</span>
+                                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">{seg.name}</h3>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.ageRange}</span>
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.gender}</span>
+                                  <span className="px-2 py-1 bg-white/5 rounded text-[10px] text-slate-300 font-mono border border-white/5">{seg.demographics.location}</span>
+                              </div>
+                              <p className="text-slate-400 text-sm leading-relaxed mb-4">{seg.recommendedStrategy}</p>
+                              
+                              <div className="flex items-center gap-4 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+                                  <span>Affinity: <b className="text-emerald-400">{seg.affinityScore}%</b></span>
+                                  <span>Size: <b className="text-blue-400">~{seg.estimatedSize.toLocaleString()}</b></span>
+                              </div>
+                          </div>
+
+                          <div className="w-full md:w-48 flex flex-col justify-center">
+                              {!seg.adCampaign ? (
+                                  <button 
+                                    onClick={() => handleGenerateAd(seg.id)}
+                                    className="w-full py-3 border border-purple-500/50 text-purple-400 hover:bg-purple-500 hover:text-white rounded font-bold text-[10px] uppercase tracking-widest transition-all"
+                                  >
+                                    {t(lang, 'genAdBtn')}
+                                  </button>
+                              ) : (
+                                  <div className="text-center">
+                                      <div className="inline-block p-2 rounded-full bg-emerald-500/20 text-emerald-400 mb-2">
+                                          ✓
+                                      </div>
+                                      <p className="text-[10px] font-mono text-emerald-500 uppercase">Campaign Ready</p>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+
+                      {/* Campaign Details (Expandable) */}
+                      {seg.adCampaign && (
+                          <div className="border-t border-white/5 bg-slate-900/50 p-6 md:p-8 animate-fade-in-up">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                  
+                                  {/* Visuals Column */}
+                                  <div className="space-y-4">
+                                      <div className="flex justify-between items-center">
+                                          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t(lang, 'adVisual')}</h4>
+                                          <span className="text-[9px] font-mono text-slate-600 bg-white/5 px-2 py-1 rounded">AR: {seg.adCampaign.imageAspectRatio}</span>
+                                      </div>
+                                      
+                                      <div className="aspect-video bg-black/40 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden relative group/img">
+                                          {seg.adCampaign.generatedImageUrl ? (
+                                              <img src={seg.adCampaign.generatedImageUrl} alt="Campaign" className="w-full h-full object-cover" />
+                                          ) : (
+                                              <div className="text-center p-6">
+                                                  <p className="text-xs text-slate-500 font-mono mb-4 line-clamp-3 italic">
+                                                      "{seg.adCampaign.visualPrompt}"
+                                                  </p>
+                                                  <button 
+                                                    onClick={() => handleGenerateImage(seg.id)}
+                                                    disabled={!!loadingImageId}
+                                                    className="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white text-[10px] font-bold uppercase tracking-widest rounded shadow-lg transition-all"
+                                                  >
+                                                      {loadingImageId === seg.id ? "GENERATING..." : "GENERATE IMAGE"}
+                                                  </button>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+
+                                  {/* Copy & Audio Column */}
+                                  <div className="space-y-6">
+                                      <div>
+                                          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{t(lang, 'adCopy')}</h4>
+                                          <div className="bg-white/5 p-4 rounded border border-white/5 text-sm text-slate-200 leading-relaxed font-medium">
+                                              {seg.adCampaign.copyText}
+                                          </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-4">
+                                          <div className="bg-blue-900/10 p-3 rounded border border-blue-500/20">
+                                              <h5 className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-1">{t(lang, 'adChrono')}</h5>
+                                              <p className="text-white font-bold">{seg.adCampaign.chronoposting.bestDay}</p>
+                                              <p className="text-xs text-slate-400">{seg.adCampaign.chronoposting.bestTime}</p>
+                                          </div>
+                                          <div className="bg-emerald-900/10 p-3 rounded border border-emerald-500/20">
+                                              <h5 className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Call to Action</h5>
+                                              <p className="text-white text-xs">{seg.adCampaign.callToAction}</p>
+                                          </div>
+                                      </div>
+
+                                      {/* Audio Gen */}
+                                      <div className="pt-2 border-t border-white/5">
+                                          <div className="flex justify-between items-center mb-2">
+                                              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Audio Script</h4>
+                                              {!seg.adCampaign.generatedAudioUrl && (
+                                                  <button 
+                                                    onClick={() => handleGenerateAudio(seg.id)}
+                                                    disabled={!!loadingAudioId}
+                                                    className="text-[9px] text-purple-400 hover:text-white uppercase font-bold tracking-widest"
+                                                  >
+                                                      {loadingAudioId === seg.id ? "GENERATING..." : "GENERATE AUDIO"}
+                                                  </button>
+                                              )}
+                                          </div>
+                                          <p className="text-xs text-slate-400 font-mono italic mb-3">"{seg.adCampaign.audioScript}"</p>
+                                          
+                                          {seg.adCampaign.generatedAudioUrl && (
+                                              <audio controls src={seg.adCampaign.generatedAudioUrl} className="w-full h-8 opacity-70 hover:opacity-100 transition-opacity" />
+                                          )}
+                                      </div>
+                                  </div>
+
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              ))}
+          </div>
+      )}
     </div>
   );
 };
