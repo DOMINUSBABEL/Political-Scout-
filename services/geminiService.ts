@@ -237,12 +237,17 @@ export const generateAdCampaign = async (
 ): Promise<AdCampaign> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    // Safety checks for optional/undefined fields coming from the Segment AI
+    const safePainPoints = Array.isArray(segment.painPoints) ? segment.painPoints : [];
+    const safeName = segment.name || "General Audience";
+    const safeDemographics = segment.demographics || {};
+
     const prompt = `
       ROLE: Creative Director & Data Scientist.
       CANDIDATE: ${profile.name} (${profile.styleDescription}).
-      TARGET AUDIENCE: ${segment.name}.
-      DEMOGRAPHICS: ${JSON.stringify(segment.demographics)}.
-      PAIN POINTS: ${segment.painPoints.join(", ")}.
+      TARGET AUDIENCE: ${safeName}.
+      DEMOGRAPHICS: ${JSON.stringify(safeDemographics)}.
+      PAIN POINTS: ${safePainPoints.join(", ")}.
 
       MISSION:
       Design a micro-targeted advertising campaign for this specific segment.

@@ -437,8 +437,8 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
                   <span className="text-slate-600 shrink-0">
                       {new Date().toLocaleTimeString([], {hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}
                   </span>
-                  <span className={`${log.includes("🔴") ? "text-red-400" : log.includes("✅") ? "text-emerald-400" : "text-slate-300"}`}>
-                      {log.replace(/^[^\s]+/, '')} {/* Remove emoji for cleaner tech look if desired, or keep */}
+                  <span className={`${(log || "").includes("🔴") ? "text-red-400" : (log || "").includes("✅") ? "text-emerald-400" : "text-slate-300"}`}>
+                      {(log || "").replace(/^[^\s]+/, '')} {/* Remove emoji for cleaner tech look if desired, or keep */}
                   </span>
                </div>
             ))}

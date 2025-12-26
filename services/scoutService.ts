@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { ScrapedData } from "../types";
 
@@ -26,6 +27,11 @@ const extractHintsFromUrl = (url: string): string => {
 export const scoutUrl = async (url: string, onStatusUpdate: (status: string) => void): Promise<ScrapedData> => {
   onStatusUpdate("🤖 Scout Agent Initialized (Gemini 3 Pro)...");
   await delay(500);
+  
+  if (!url) {
+     onStatusUpdate("🔴 Error: Invalid URL provided.");
+     return { author: "", content: "", platform: "Unknown" };
+  }
 
   // 1. CHECK FOR SIMULATION / DEMO MODE
   if (url.includes("UsuarioOpositor") || url.includes("simulacion") || url.includes("demo-mode")) {

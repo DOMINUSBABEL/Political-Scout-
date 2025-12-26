@@ -126,14 +126,17 @@ export const ThinkingConsole: React.FC<Props> = ({ isVisible, mode = 'DEFENSE', 
       )}
 
       <div className="space-y-1 h-32 overflow-y-auto custom-scrollbar flex flex-col-reverse">
-         {lines.map((line, idx) => (
-           <div key={idx} className="flex gap-2 border-l border-white/5 pl-2">
-             <span className="text-slate-600 shrink-0">[{new Date().toLocaleTimeString()}]</span>
-             <span className={line.includes("DEEP") ? "text-purple-300 font-bold" : line.includes("Working") ? "text-slate-500 italic" : "text-emerald-100"}>
-               {line.includes("...") ? line : `>> ${line}`}
-             </span>
-           </div>
-         )).reverse()}
+         {lines.map((line, idx) => {
+           if (!line) return null; // Safety check for undefined lines
+           return (
+             <div key={idx} className="flex gap-2 border-l border-white/5 pl-2">
+               <span className="text-slate-600 shrink-0">[{new Date().toLocaleTimeString()}]</span>
+               <span className={line.includes("DEEP") ? "text-purple-300 font-bold" : line.includes("Working") ? "text-slate-500 italic" : "text-emerald-100"}>
+                 {line.includes("...") ? line : `>> ${line}`}
+               </span>
+             </div>
+           );
+         }).reverse()}
       </div>
     </div>
   );
