@@ -21,6 +21,7 @@ export interface GeneratedResponse {
   tone: ResponseTone;
   content: string;
   reasoning: string;
+  visualPrompt: string; // New: Prompt for generating the image
 }
 
 export interface CandidateProfile {
@@ -101,6 +102,12 @@ export interface TrendItem {
   description: string;
   platformSource: 'Google' | 'X' | 'TikTok' | 'News';
   sentiment: 'Negative' | 'Neutral' | 'Positive';
+  // New: Generated content for this trend
+  generatedContent?: {
+    text: string;
+    visualPrompt: string;
+    imageUrl?: string;
+  };
 }
 
 export interface TrendAnalysis {

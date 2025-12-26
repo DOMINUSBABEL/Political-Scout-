@@ -4,14 +4,20 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   AreaChart, Area, Cell
 } from 'recharts';
-import { NetworkStat, Language, NetworkAgentAnalysis, TrendAnalysis } from '../types';
-import { analyzeNetworkStats, scanNetworkTrends } from '../services/geminiService';
+import { NetworkStat, Language, NetworkAgentAnalysis, TrendAnalysis, CandidateProfile } from '../types';
+import { analyzeNetworkStats, scanNetworkTrends, generateTrendContent, generateMarketingImage } from '../services/geminiService';
 import { ProgressBar } from './ProgressBar';
 import { t } from '../utils/translations';
 
 interface Props {
   lang: Language;
 }
+
+// Mock profile just for trend content generation context if App doesn't pass one
+// Ideally, App should pass activeProfile here too.
+const DEFAULT_PROFILE: CandidateProfile = {
+    id: 'default', name: 'Agent', role: 'Candidate', styleDescription: 'Professional, engaging', knowledgeBase: '', avatar: null, themeColor: '#10B981'
+};
 
 type SentimentFilterType = 'ALL' | '0-50' | '50-75' | '75-100';
 type NetworkTab = 'UPLOAD' | 'LIVE';
@@ -42,6 +48,10 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   const [trendDate, setTrendDate] = useState(new Date().toISOString().split('T')[0]);
   const [trendLocation, setTrendLocation] = useState('Colombia');
   const [trendResults, setTrendResults] = useState<TrendAnalysis | null>(null);
+  
+  // Creative Studio State
+  const [generatingTrendContent, setGeneratingTrendContent] = useState<number | null>(null); // Index of trend
+  const [trendContent, setTrendContent] = useState<{[key: number]: {text: string, image?: string}}>({});
 
   // Robust CSV Parser
   const parseCSV = (text: string): NetworkStat[] => {
@@ -232,6 +242,31 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
       }
   };
 
+  const handleCreateTrendContent = async (index: number, topic: string, platform: string) => {
+      setGeneratingTrendContent(index);
+      try {
+          // 1. Generate text and visual prompt
+          const content = await generateTrendContent(topic, platform, DEFAULT_PROFILE);
+          
+          // 2. Generate Image
+          let imageUrl = undefined;
+          if (content.visualPrompt) {
+              imageUrl = await generateMarketingImage(content.visualPrompt);
+          }
+
+          setTrendContent(prev => ({
+              ...prev,
+              [index]: { text: content.text, image: imageUrl }
+          }));
+
+      } catch (e) {
+          console.error(e);
+          alert("Error creating content.");
+      } finally {
+          setGeneratingTrendContent(null);
+      }
+  };
+
   const loadDemoData = async () => {
     setLoading(true);
     setProgress(20);
@@ -294,7 +329,6 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
   const filteredStats = useMemo(() => {
       let filtered = stats;
 
-      // Filter by Sentiment
       if (sentimentFilter !== 'ALL') {
           filtered = filtered.filter(s => {
             if (sentimentFilter === '0-50') return s.sentiment_score >= 0 && s.sentiment_score <= 50;
@@ -304,12 +338,10 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
         });
       }
 
-      // Filter by Platform (Interactive)
       if (filterPlatform) {
           filtered = filtered.filter(s => s.platform === filterPlatform);
       }
 
-      // Demographics Filters
       if (filterAge !== 'ALL') {
           filtered = filtered.filter(s => s.age_group === filterAge);
       }
@@ -383,6 +415,7 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
 
       {activeTab === 'UPLOAD' ? (
           <>
+            {/* ... Existing Upload Logic ... */}
             <div className="flex justify-end gap-3 w-full">
                  {stats.length > 0 && (
                      <button 
@@ -630,6 +663,7 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
 
                 {/* Chart 2: Engagement by Platform (Bar Chart) with Interactive Filtering */}
                 <div className="lg:col-span-2 glass-panel rounded-xl p-6 shadow-xl h-[350px]">
+                    {/* ... Existing Bar Chart ... */}
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-slate-300 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                             <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> ENGAGEMENT BY PLATFORM
@@ -682,6 +716,7 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
       ) : (
           /* LIVE TREND SCANNER TAB */
           <div className="animate-fade-in-up space-y-8">
+              {/* ... Existing Scanner UI ... */}
               <div className="glass-panel p-6 rounded-xl border border-pink-500/20 bg-pink-900/5">
                   <h3 className="text-pink-400 font-bold uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
                      <span className="text-lg">📡</span> {t(lang, 'scanTitle')}
@@ -737,33 +772,56 @@ export const NetworkAnalysisMode: React.FC<Props> = ({ lang }) => {
                           <div className="space-y-4">
                               <h4 className="text-slate-500 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Top Viral Topics</h4>
                               {trendResults.topTrends.map((trend, i) => (
-                                  <div key={i} className="glass-panel p-4 rounded-lg flex items-start gap-4 hover:bg-white/5 transition-colors group">
-                                      <div className="text-3xl font-black text-white/10 group-hover:text-pink-500/50 transition-colors">
-                                          0{trend.rank}
+                                  <div key={i} className="glass-panel p-4 rounded-lg flex flex-col gap-4 hover:bg-white/5 transition-colors group">
+                                      <div className="flex items-start gap-4">
+                                        <div className="text-3xl font-black text-white/10 group-hover:text-pink-500/50 transition-colors">
+                                            0{trend.rank}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <h5 className="text-white font-bold text-lg leading-tight mb-1">{trend.topic}</h5>
+                                                <span className={`text-[9px] px-2 py-0.5 rounded uppercase font-bold ${
+                                                    trend.sentiment === 'Positive' ? 'bg-emerald-900/40 text-emerald-400' :
+                                                    trend.sentiment === 'Negative' ? 'bg-red-900/40 text-red-400' : 'bg-slate-800 text-slate-400'
+                                                }`}>
+                                                    {trend.sentiment}
+                                                </span>
+                                            </div>
+                                            <p className="text-slate-400 text-xs mb-2 leading-snug">{trend.description}</p>
+                                            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                    {trend.platformSource}
+                                                </span>
+                                                {trend.volume && (
+                                                    <span className="text-pink-400/80">
+                                                        Vol: {trend.volume}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                       </div>
-                                      <div className="flex-1">
-                                          <div className="flex justify-between items-start">
-                                              <h5 className="text-white font-bold text-lg leading-tight mb-1">{trend.topic}</h5>
-                                              <span className={`text-[9px] px-2 py-0.5 rounded uppercase font-bold ${
-                                                  trend.sentiment === 'Positive' ? 'bg-emerald-900/40 text-emerald-400' :
-                                                  trend.sentiment === 'Negative' ? 'bg-red-900/40 text-red-400' : 'bg-slate-800 text-slate-400'
-                                              }`}>
-                                                  {trend.sentiment}
-                                              </span>
-                                          </div>
-                                          <p className="text-slate-400 text-xs mb-2 leading-snug">{trend.description}</p>
-                                          <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-                                              <span className="flex items-center gap-1">
-                                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                                  {trend.platformSource}
-                                              </span>
-                                              {trend.volume && (
-                                                  <span className="text-pink-400/80">
-                                                      Vol: {trend.volume}
-                                                  </span>
+
+                                      {/* Creative Studio Button */}
+                                      <button 
+                                        onClick={() => handleCreateTrendContent(i, trend.topic, trend.platformSource)}
+                                        disabled={generatingTrendContent === i}
+                                        className="w-full bg-slate-800 hover:bg-pink-900/30 border border-white/5 hover:border-pink-500/30 text-slate-300 hover:text-pink-300 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                                      >
+                                          {generatingTrendContent === i ? <span className="animate-pulse">GENERATING...</span> : <><span>🎨</span> CREATE POST & IMAGE</>}
+                                      </button>
+
+                                      {/* Generated Content Display */}
+                                      {trendContent[i] && (
+                                          <div className="mt-2 bg-black/40 p-4 rounded border border-pink-500/20 animate-fade-in-up">
+                                              <p className="text-xs text-white mb-3 font-medium italic">"{trendContent[i].text}"</p>
+                                              {trendContent[i].image ? (
+                                                  <img src={trendContent[i].image} alt="Trend Visual" className="w-full rounded border border-white/10" />
+                                              ) : (
+                                                  <div className="h-24 bg-white/5 rounded flex items-center justify-center text-xs text-slate-500">Image Loading...</div>
                                               )}
                                           </div>
-                                      </div>
+                                      )}
                                   </div>
                               ))}
                           </div>
