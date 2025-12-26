@@ -49,44 +49,48 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [segments, setSegments] = useState<TargetSegment[]>([]);
   const [granularity, setGranularity] = useState(2); // 1 = Low, 2 = Medium, 3 = High
+  const [searchStatus, setSearchStatus] = useState('');
 
-  // Simulate or use AI to generate segments based on the "Formula": Gender x Age x Topics x Location
   const generateSegments = async () => {
     setIsGenerating(true);
+    setSearchStatus('INITIALIZING AGENT...');
     setSegments([]);
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Construct prompt based on user inputs
+    // Updated Prompt to enforce Search Grounding (Scouting)
     const prompt = `
-      Act as a Political Campaign Strategist for Candidate: ${activeProfile.name}.
+      ROLE: Elite Political Data Scout & Strategist.
+      CANDIDATE: ${activeProfile.name} (${activeProfile.styleDescription}).
       
-      TASK: Perform a Voter Segmentation Analysis (Audience Targeting).
-      REGION: ${region}.
-      CONTEXT: The user wants to define specific voter groups by crossing Demographics (Age, Gender) with Location and Thematic Interests.
+      MISSION:
+      Perform LIVE WEB RECONNAISSANCE to identify specific voter segments in the region: "${region}".
       
-      DATA SOURCES SIMULATION: 
-      - DANE (Demographics)
-      - Google Ads (Interests)
-      - Alcaldía/Planning Dept (Local context like "Comuna 7 Robledo has more families").
+      INSTRUCTIONS:
+      1. USE GOOGLE SEARCH to find real, up-to-date data. Do not hallucinate.
+      2. SEARCH TARGETS:
+         - "Demografía DANE ${region} 2023 2024" (Look for age/gender distribution, income levels).
+         - "Problemas sociales ${region} noticias recientes" (Identify pain points like security, mobility, hunger).
+         - "Plan de Desarrollo ${region}" (To identify neglected zones).
+      3. SYNTHESIZE the search results into ${3 + granularity * 2} distinct, high-value voter segments.
       
-      Generate ${3 + granularity * 2} distinct, high-value voter segments.
-      
-      For each segment:
-      1. Give it a catchy "Code Name" (e.g. "Eco-Moms Robledo", "Young Techies Poblado").
-      2. Define demographics.
-      3. Estimate voting affinity (0-100%) for ${activeProfile.name} based on her profile: "${activeProfile.styleDescription}".
-      4. List key pain points.
-      5. Suggest a specific campaign message.
+      SEGMENTATION LOGIC:
+      - Cross-reference Demographics (Age/Gender) + Location + Current Events (Pain Points).
+      - Example: If news says "Water shortages in ${region}", create a segment "Madres Afectadas por Cortes de Agua".
 
-      Return JSON.
+      OUTPUT REQUIREMENT:
+      Return valid JSON containing the segments.
+      For each segment, the 'affinityScore' (0-100) must reflect how likely they are to vote for ${activeProfile.name} based on her profile provided.
     `;
 
     try {
+      setSearchStatus('SCOUTING WEB DATA (DANE/NEWS)...');
+      
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
         contents: prompt,
         config: {
+          tools: [{ googleSearch: {} }], // ENABLE WEB SCOUTING
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -119,27 +123,35 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
         }
       });
 
+      setSearchStatus('PROCESSING INTELLIGENCE...');
       const data = JSON.parse(response.text || "{}");
+      
+      // Extract grounding metadata if available to show sources (console for now)
+      if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+         console.log("Sources found:", response.candidates[0].groundingMetadata.groundingChunks);
+      }
+
       if (data.segments) {
         setSegments(data.segments);
       }
     } catch (e) {
       console.error(e);
-      // Fallback data if AI fails
+      // Fallback data if AI fails (Network error)
       setSegments([
         {
-          id: '1',
-          name: 'Madres Cabeza de Familia',
-          demographics: { ageRange: '35-45', gender: 'Female', location: region.includes('Medellín') ? 'Comuna 7 (Robledo)' : region },
-          estimatedSize: 12500,
-          affinityScore: 78,
-          topInterests: ['Educación', 'Seguridad Alimentaria'],
-          painPoints: ['Costo de útiles escolares', 'Inseguridad en parques'],
-          recommendedStrategy: 'Hablar de "Geología Social" para proteger escuelas.'
+          id: 'error-fallback',
+          name: 'Error de Conexión',
+          demographics: { ageRange: 'N/A', gender: 'N/A', location: region },
+          estimatedSize: 0,
+          affinityScore: 0,
+          topInterests: ['Reintentar búsqueda'],
+          painPoints: ['No se pudo acceder a datos en vivo'],
+          recommendedStrategy: 'Verificar conexión a internet y API Key.'
         }
       ]);
     } finally {
       setIsGenerating(false);
+      setSearchStatus('');
     }
   };
 
@@ -216,24 +228,34 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
            </div>
 
            {/* Data Sources Badge */}
-           <div className="bg-black/20 p-4 rounded border border-white/5">
-              <span className="text-[9px] text-slate-500 uppercase font-bold block mb-2">Connected Data Sources (Simulated)</span>
-              <div className="flex flex-wrap gap-2">
-                 <span className="px-2 py-1 bg-blue-900/30 text-blue-400 text-[9px] rounded border border-blue-500/20">DANE 2024</span>
-                 <span className="px-2 py-1 bg-yellow-900/30 text-yellow-400 text-[9px] rounded border border-yellow-500/20">Google Ads</span>
-                 <span className="px-2 py-1 bg-emerald-900/30 text-emerald-400 text-[9px] rounded border border-emerald-500/20">Alcaldía (Planeación)</span>
+           <div className="bg-black/20 p-4 rounded border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]">
+              <div className="flex items-center justify-between mb-2">
+                 <span className="text-[9px] text-emerald-400 uppercase font-bold block">Live Web Intelligence Agent</span>
+                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
               </div>
+              <div className="flex flex-wrap gap-2">
+                 <span className="px-2 py-1 bg-blue-900/30 text-blue-300 text-[9px] rounded border border-blue-500/20">DANE (Census)</span>
+                 <span className="px-2 py-1 bg-purple-900/30 text-purple-300 text-[9px] rounded border border-purple-500/20">Google Trends</span>
+                 <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[9px] rounded border border-white/10">Local News</span>
+              </div>
+              <p className="text-[9px] text-slate-500 mt-2 font-mono leading-tight">
+                 * Agent actively scouts external sources for real-time validation.
+              </p>
            </div>
 
            <button 
              onClick={generateSegments}
              disabled={isGenerating}
-             className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(147,51,234,0.3)] uppercase tracking-[0.2em] text-xs transition-all relative overflow-hidden"
+             className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-[0_0_20px_rgba(147,51,234,0.3)] uppercase tracking-[0.2em] text-xs transition-all relative overflow-hidden group"
            >
+             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
              {isGenerating ? (
-               <span className="animate-pulse">PROCESSING CENSUS DATA...</span>
+               <div className="flex items-center justify-center gap-2 relative z-10">
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span className="animate-pulse">{searchStatus}</span>
+               </div>
              ) : (
-               <span>{t(lang, 'genSegments')}</span>
+               <span className="relative z-10">{t(lang, 'genSegments')}</span>
              )}
            </button>
         </div>
@@ -248,7 +270,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
            ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {segments.map((seg, idx) => (
-                 <div key={idx} className="glass-panel p-5 rounded-xl border-l-4 border-l-purple-500 hover:bg-white/5 transition-all group relative overflow-hidden">
+                 <div key={idx} className="glass-panel p-5 rounded-xl border-l-4 border-l-purple-500 hover:bg-white/5 transition-all group relative overflow-hidden animate-fade-in-up" style={{ animationDelay: `${idx * 100}ms` }}>
                     {/* Background Affinity Gradient */}
                     <div 
                       className="absolute top-0 right-0 h-full w-1/2 opacity-10 pointer-events-none bg-gradient-to-l from-purple-500 to-transparent"
@@ -256,8 +278,8 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                     ></div>
 
                     <div className="flex justify-between items-start mb-3 relative z-10">
-                       <h3 className="font-bold text-white text-sm uppercase tracking-wider">{seg.name}</h3>
-                       <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded border ${
+                       <h3 className="font-bold text-white text-sm uppercase tracking-wider pr-2">{seg.name}</h3>
+                       <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded border whitespace-nowrap ${
                          seg.affinityScore > 75 ? 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50' :
                          seg.affinityScore > 50 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-500/50' :
                          'bg-red-900/50 text-red-400 border-red-500/50'
@@ -267,22 +289,27 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                     </div>
 
                     <div className="text-[10px] font-mono text-slate-400 mb-4 space-y-1 relative z-10">
-                       <p>📍 {seg.demographics.location}</p>
-                       <p>👥 {seg.demographics.gender}, {seg.demographics.ageRange}</p>
-                       <p>📊 Est. Size: {seg.estimatedSize.toLocaleString()}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">📍</span> {seg.demographics.location}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">👥</span> {seg.demographics.gender}, {seg.demographics.ageRange}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">📊</span> Est. Size: {seg.estimatedSize.toLocaleString()}</p>
                     </div>
 
                     <div className="mb-4 relative z-10">
-                       <p className="text-[9px] uppercase font-bold text-slate-500 mb-1">Top Interests</p>
+                       <p className="text-[9px] uppercase font-bold text-slate-500 mb-1">Top Interests & Pain Points</p>
                        <div className="flex flex-wrap gap-1">
-                          {seg.topInterests.map((int, i) => (
-                            <span key={i} className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-slate-300 border border-white/5">{int}</span>
+                          {seg.topInterests.slice(0, 2).map((int, i) => (
+                            <span key={`int-${i}`} className="text-[9px] bg-blue-900/20 px-1.5 py-0.5 rounded text-blue-200 border border-blue-500/20">{int}</span>
+                          ))}
+                          {seg.painPoints.slice(0, 2).map((pp, i) => (
+                            <span key={`pp-${i}`} className="text-[9px] bg-red-900/20 px-1.5 py-0.5 rounded text-red-200 border border-red-500/20">⚠️ {pp}</span>
                           ))}
                        </div>
                     </div>
 
                     <div className="bg-black/30 p-3 rounded border border-white/5 relative z-10">
-                       <p className="text-[9px] uppercase font-bold text-purple-400 mb-1">Strategy Tip</p>
+                       <p className="text-[9px] uppercase font-bold text-purple-400 mb-1 flex items-center gap-1">
+                          <span>⚡</span> Strategy Tip
+                       </p>
                        <p className="text-xs text-slate-200 leading-snug italic">"{seg.recommendedStrategy}"</p>
                     </div>
                  </div>
