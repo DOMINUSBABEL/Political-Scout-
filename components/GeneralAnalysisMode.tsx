@@ -8,12 +8,12 @@ import { ProgressBar } from './ProgressBar';
 import { ThinkingConsole } from './ThinkingConsole';
 import { t } from '../utils/translations';
 
-interface DefenseModeProps {
+interface GeneralAnalysisModeProps {
   lang: Language;
   activeProfile: CandidateProfile;
 }
 
-export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile }) => {
+export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, activeProfile }) => {
   const [url, setUrl] = useState('');
   const [postContent, setPostContent] = useState('');
   const [author, setAuthor] = useState('');
@@ -226,7 +226,7 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile })
             {t(lang, 'warRoomTitle')}
           </h1>
           <div className="flex items-center gap-3 mt-3">
-             <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest bg-white/5 px-2 py-1 rounded">Protocol: Defense</span>
+             <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest bg-white/5 px-2 py-1 rounded">Protocol: General Analysis</span>
              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono flex items-center gap-2">
                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                Agent: {activeProfile.name}

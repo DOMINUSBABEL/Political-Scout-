@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { Nav } from './components/Nav';
-import { DefenseMode } from './components/DefenseMode';
+import { GeneralAnalysisMode } from './components/GeneralAnalysisMode';
 import { TranslatorMode } from './components/TranslatorMode';
 import { NetworkAnalysisMode } from './components/NetworkAnalysisMode';
 import { ProfileManager } from './components/ProfileManager'; 
-import { TargetingMode } from './components/TargetingMode'; // New
+import { TargetingMode } from './components/TargetingMode'; 
 import { Login } from './components/Login';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { AppMode, Language, CandidateProfile } from './types';
@@ -31,7 +31,7 @@ const INITIAL_PROFILE: CandidateProfile = {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.DEFENSE);
+  const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.GENERAL);
   const [language, setLanguage] = useState<Language>('ES');
   
   // Profile Management State
@@ -41,7 +41,7 @@ function App() {
   const handleAddProfile = (newProfile: CandidateProfile) => {
     setProfiles([...profiles, newProfile]);
     setActiveProfile(newProfile); // Auto-switch to new profile
-    setCurrentMode(AppMode.DEFENSE); // Go back to defense mode to test it
+    setCurrentMode(AppMode.GENERAL); // Go back to defense mode to test it
   };
 
   if (!isAuthenticated) {
@@ -76,8 +76,8 @@ function App() {
       <main className="flex-1 ml-20 md:ml-72 p-4 md:p-8 overflow-y-auto h-screen relative z-10 scroll-smooth">
         <div className="max-w-7xl mx-auto h-full pb-10 flex flex-col">
           <div className="flex-1 animate-fade-in-up">
-             {currentMode === AppMode.DEFENSE && (
-                <DefenseMode lang={language} activeProfile={activeProfile} />
+             {currentMode === AppMode.GENERAL && (
+                <GeneralAnalysisMode lang={language} activeProfile={activeProfile} />
              )}
              {currentMode === AppMode.TARGETING && (
                 <TargetingMode lang={language} activeProfile={activeProfile} />

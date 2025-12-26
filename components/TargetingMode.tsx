@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import { Language, CandidateProfile, TargetSegment } from '../types';
+import { Language, CandidateProfile, TargetSegment, AdCampaign } from '../types';
+import { generateAdCampaign } from '../services/geminiService';
 import { t } from '../utils/translations';
+import { ThinkingConsole } from './ThinkingConsole';
 
 interface Props {
   lang: Language;
@@ -50,11 +52,17 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const [segments, setSegments] = useState<TargetSegment[]>([]);
   const [granularity, setGranularity] = useState(2); // 1 = Low, 2 = Medium, 3 = High
   const [searchStatus, setSearchStatus] = useState('');
+  const [deepResearch, setDeepResearch] = useState(true); 
+  const [analysisReasoning, setAnalysisReasoning] = useState<string>('');
+  
+  // Ad Campaign Generation States
+  const [generatingAdFor, setGeneratingAdFor] = useState<string | null>(null);
 
   const generateSegments = async () => {
     setIsGenerating(true);
     setSearchStatus('INITIALIZING AGENT...');
     setSegments([]);
+    setAnalysisReasoning('');
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
@@ -66,6 +74,8 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
       MISSION:
       Perform LIVE WEB RECONNAISSANCE to identify specific voter segments in the region: "${region}".
       
+      ${deepResearch ? "MODE: DEEP RESEARCH ENABLED. Search extensively for recent news and stats." : ""}
+
       INSTRUCTIONS:
       1. USE GOOGLE SEARCH to find real, up-to-date data. Do not hallucinate.
       2. SEARCH TARGETS:
@@ -79,8 +89,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
       - Example: If news says "Water shortages in ${region}", create a segment "Madres Afectadas por Cortes de Agua".
 
       OUTPUT REQUIREMENT:
-      Return valid JSON containing the segments.
-      For each segment, the 'affinityScore' (0-100) must reflect how likely they are to vote for ${activeProfile.name} based on her profile provided.
+      Return valid JSON containing the segments AND a 'thoughtProcess' field summarizing your findings.
     `;
 
     try {
@@ -91,10 +100,12 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }], // ENABLE WEB SCOUTING
+          thinkingConfig: deepResearch ? { thinkingBudget: 2048 } : undefined,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              thoughtProcess: { type: Type.STRING },
               segments: {
                 type: Type.ARRAY,
                 items: {
@@ -134,6 +145,9 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
       if (data.segments) {
         setSegments(data.segments);
       }
+      if (data.thoughtProcess) {
+        setAnalysisReasoning(data.thoughtProcess);
+      }
     } catch (e) {
       console.error(e);
       // Fallback data if AI fails (Network error)
@@ -153,6 +167,20 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
       setIsGenerating(false);
       setSearchStatus('');
     }
+  };
+
+  const handleGenerateAd = async (segment: TargetSegment) => {
+      setGeneratingAdFor(segment.id);
+      try {
+          const campaign = await generateAdCampaign(segment, activeProfile);
+          setSegments(prev => prev.map(s => 
+              s.id === segment.id ? { ...s, adCampaign: campaign } : s
+          ));
+      } catch (err) {
+          console.error("Ad Gen Failed", err);
+      } finally {
+          setGeneratingAdFor(null);
+      }
   };
 
   return (
@@ -227,20 +255,26 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
               </p>
            </div>
 
-           {/* Data Sources Badge */}
+           {/* Data Sources Badge & Deep Research */}
            <div className="bg-black/20 p-4 rounded border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]">
               <div className="flex items-center justify-between mb-2">
-                 <span className="text-[9px] text-emerald-400 uppercase font-bold block">Live Web Intelligence Agent</span>
+                 <span className="text-[9px] text-emerald-400 uppercase font-bold block">Live Web Intelligence</span>
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                 <span className="px-2 py-1 bg-blue-900/30 text-blue-300 text-[9px] rounded border border-blue-500/20">DANE (Census)</span>
-                 <span className="px-2 py-1 bg-purple-900/30 text-purple-300 text-[9px] rounded border border-purple-500/20">Google Trends</span>
-                 <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[9px] rounded border border-white/10">Local News</span>
+              
+              <div 
+                  onClick={() => setDeepResearch(!deepResearch)}
+                  className={`mb-3 flex items-center gap-2 p-2 rounded cursor-pointer transition-all border ${deepResearch ? 'bg-purple-900/40 border-purple-500' : 'bg-black/40 border-white/5'}`}
+              >
+                   <div className={`w-3 h-3 rounded-full border ${deepResearch ? 'bg-purple-500 border-white' : 'border-slate-500'}`}></div>
+                   <span className={`text-[9px] font-bold uppercase ${deepResearch ? 'text-white' : 'text-slate-500'}`}>Deep Research Mode</span>
               </div>
-              <p className="text-[9px] text-slate-500 mt-2 font-mono leading-tight">
-                 * Agent actively scouts external sources for real-time validation.
-              </p>
+
+              <div className="flex flex-wrap gap-2">
+                 <span className="px-2 py-1 bg-blue-900/30 text-blue-300 text-[9px] rounded border border-blue-500/20">DANE</span>
+                 <span className="px-2 py-1 bg-purple-900/30 text-purple-300 text-[9px] rounded border border-purple-500/20">Trends</span>
+                 <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[9px] rounded border border-white/10">News</span>
+              </div>
            </div>
 
            <button 
@@ -262,7 +296,21 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
 
         {/* Results Grid */}
         <div className="lg:col-span-2 space-y-6">
-           {segments.length === 0 ? (
+           <ThinkingConsole isVisible={isGenerating} mode="TARGETING" isDeepResearch={deepResearch} />
+           
+           {/* REASONING PANEL */}
+           {analysisReasoning && !isGenerating && (
+              <div className="glass-panel p-4 rounded-lg border-l-4 border-purple-500 bg-purple-900/10 animate-fade-in-up">
+                 <h4 className="text-purple-400 font-bold uppercase text-[10px] tracking-widest mb-2 flex items-center gap-2">
+                   <span>🧠</span> Segmentation Logic
+                 </h4>
+                 <p className="text-slate-300 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                   {analysisReasoning}
+                 </p>
+              </div>
+           )}
+
+           {segments.length === 0 && !isGenerating ? (
              <div className="h-full flex flex-col items-center justify-center glass-panel rounded-xl p-12 text-slate-600 border-dashed border-2 border-slate-700">
                 <span className="text-6xl mb-4 opacity-20">🎯</span>
                 <p className="text-sm font-mono uppercase tracking-widest">Select region and generate segments</p>
@@ -306,12 +354,55 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                        </div>
                     </div>
 
-                    <div className="bg-black/30 p-3 rounded border border-white/5 relative z-10">
+                    <div className="bg-black/30 p-3 rounded border border-white/5 relative z-10 mb-4">
                        <p className="text-[9px] uppercase font-bold text-purple-400 mb-1 flex items-center gap-1">
                           <span>⚡</span> Strategy Tip
                        </p>
                        <p className="text-xs text-slate-200 leading-snug italic">"{seg.recommendedStrategy || "N/A"}"</p>
                     </div>
+
+                    {/* AD CAMPAIGN GENERATOR SECTION */}
+                    {seg.adCampaign ? (
+                         <div className="bg-emerald-900/20 border border-emerald-500/30 rounded p-3 relative z-10 animate-fade-in-up">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                                    {t(lang, 'adVisual')}
+                                </h4>
+                                <span className="text-[8px] bg-emerald-500 text-black font-bold px-1 rounded">READY</span>
+                            </div>
+                            <p className="text-[10px] text-slate-300 italic mb-2 border-l-2 border-white/20 pl-2">"{seg.adCampaign.visualPrompt.substring(0, 80)}..."</p>
+                            
+                            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">{t(lang, 'adCopy')}</h4>
+                            <p className="text-[10px] text-white mb-2 font-medium">"{seg.adCampaign.copyText}"</p>
+                            
+                            <div className="bg-black/40 p-2 rounded flex justify-between items-center">
+                                <div>
+                                    <span className="block text-[8px] text-slate-500 uppercase">{t(lang, 'adChrono')}</span>
+                                    <span className="text-[10px] text-yellow-400 font-mono font-bold">
+                                        {seg.adCampaign.chronoposting.bestDay} @ {seg.adCampaign.chronoposting.bestTime}
+                                    </span>
+                                </div>
+                                <div className="text-xl">⏰</div>
+                            </div>
+                         </div>
+                    ) : (
+                        <button 
+                            onClick={() => handleGenerateAd(seg)}
+                            disabled={!!generatingAdFor}
+                            className={`w-full py-2 rounded border border-dashed font-bold text-[10px] uppercase tracking-widest transition-all relative z-10 ${
+                                generatingAdFor === seg.id 
+                                ? 'bg-slate-800 border-slate-600 text-slate-400 cursor-wait' 
+                                : 'bg-transparent border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500'
+                            }`}
+                        >
+                            {generatingAdFor === seg.id ? (
+                                <span className="animate-pulse">GENERATING CAMPAIGN...</span>
+                            ) : (
+                                <span>+ {t(lang, 'genAdBtn')}</span>
+                            )}
+                        </button>
+                    )}
+
                  </div>
                ))}
              </div>

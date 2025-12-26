@@ -34,9 +34,10 @@ export interface CandidateProfile {
 }
 
 export interface AnalysisResult {
+  thoughtProcess: string; // New: Captures the "Deep Research" reasoning
   sentiment: 'Negative' | 'Neutral' | 'Positive' | 'Troll';
   intent: string;
-  voterClassification: VoterType; // New Field
+  voterClassification: VoterType; 
   riskLevel: 'Low' | 'Medium' | 'High';
   warningMessage?: string;
   legalReviewRequested?: boolean; 
@@ -61,11 +62,11 @@ export interface ScrapedData {
 }
 
 export enum AppMode {
-  DEFENSE = 'defense',
+  GENERAL = 'general', // Renamed from DEFENSE
   TRANSLATOR = 'translator',
   NETWORK = 'network',
   PROFILE = 'profile',
-  TARGETING = 'targeting' // New Mode
+  TARGETING = 'targeting'
 }
 
 export type Language = 'ES' | 'EN' | 'FR' | 'DE';
@@ -80,13 +81,26 @@ export interface NetworkStat {
 }
 
 export interface NetworkAgentAnalysis {
+  thoughtProcess: string; // New
   summary: string;
   trends: string[];
   recommendations: string[];
   best_platform: string;
 }
 
-// New Segmentation Interfaces
+// New Segmentation & Ad Interfaces
+export interface AdCampaign {
+  visualPrompt: string; // For Midjourney/Imagen
+  copyText: string;
+  callToAction: string;
+  chronoposting: {
+    bestDay: string;
+    bestTime: string;
+    frequency: string;
+    reasoning: string;
+  };
+}
+
 export interface TargetSegment {
   id: string;
   name: string;
@@ -100,4 +114,5 @@ export interface TargetSegment {
   topInterests: string[];
   painPoints: string[];
   recommendedStrategy: string;
+  adCampaign?: AdCampaign; // New: Generated Ad content
 }
