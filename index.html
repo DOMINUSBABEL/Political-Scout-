@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -12,30 +13,48 @@
             colors: {
               'mariate-green': '#10B981', // Emerald 500
               'mariate-dark': '#020617', // Slate 950 base
-              'mariate-panel': '#0f172a', // Slate 900
-              'neon-accent': '#34d399',
-              'glass-border': 'rgba(255, 255, 255, 0.08)',
-              'glass-bg': 'rgba(15, 23, 42, 0.6)',
+              'mariate-panel': '#0B1120', // Deep Slate
+              'surface-glass': 'rgba(255, 255, 255, 0.03)',
+              'surface-highlight': 'rgba(255, 255, 255, 0.08)',
             },
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'Menlo', 'monospace'], // Suggesting a techier mono
             },
             animation: {
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'float': 'float 6s ease-in-out infinite',
+              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+              'shimmer': 'shimmer 2s linear infinite',
+              'scan': 'scan 4s linear infinite',
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+              'glass-shine': 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.05) 25%, transparent 30%)',
             },
             keyframes: {
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-10px)' },
+              },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              shimmer: {
+                '0%': { backgroundPosition: '-200% 0' },
+                '100%': { backgroundPosition: '200% 0' },
+              },
+              scan: {
+                '0%': { transform: 'translateY(-100%)' },
+                '100%': { transform: 'translateY(100%)' },
               }
             }
           },
         },
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Inter', sans-serif;
@@ -44,47 +63,72 @@
         overflow-x: hidden;
       }
       
-      /* SOTA Grid Background */
-      .bg-grid-pattern {
-        background-size: 40px 40px;
-        background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-        mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+      /* Cinematic Noise Overlay */
+      .bg-noise {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
       }
 
-      /* Glassmorphism Utilities */
+      /* Premium Glassmorphism */
       .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(11, 17, 32, 0.4); /* Darker, more premium base */
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
       
+      .glass-panel:hover {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      /* Inputs that feel like HUD elements */
       .glass-input {
-        background: rgba(2, 6, 23, 0.5);
-        border: 1px solid rgba(51, 65, 85, 0.5);
+        background: rgba(2, 6, 23, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         transition: all 0.3s ease;
+        color: white;
       }
       .glass-input:focus {
         background: rgba(2, 6, 23, 0.8);
-        border-color: #10B981;
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+        outline: none;
       }
 
-      /* Modern Scrollbar */
+      /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
+        height: 5px;
       }
       ::-webkit-scrollbar-track {
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155;
+        background: rgba(255,255,255,0.1);
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
+        background: rgba(255,255,255,0.2);
       }
+      
+      /* Utility for text glow */
+      .glow-text {
+        text-shadow: 0 0 10px currentColor;
+      }
+      
+      .animate-delay-100 { animation-delay: 100ms; }
+      .animate-delay-200 { animation-delay: 200ms; }
+      .animate-delay-300 { animation-delay: 300ms; }
     </style>
   <script type="importmap">
 {

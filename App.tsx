@@ -4,8 +4,10 @@ import { Nav } from './components/Nav';
 import { DefenseMode } from './components/DefenseMode';
 import { TranslatorMode } from './components/TranslatorMode';
 import { NetworkAnalysisMode } from './components/NetworkAnalysisMode';
-import { ProfileManager } from './components/ProfileManager'; // New
+import { ProfileManager } from './components/ProfileManager'; 
+import { TargetingMode } from './components/TargetingMode'; // New
 import { Login } from './components/Login';
+import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { AppMode, Language, CandidateProfile } from './types';
 import { t } from './utils/translations';
 
@@ -47,16 +49,19 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-mariate-dark relative overflow-hidden text-slate-200">
-      {/* SOTA Ambient Background Layers */}
-      <div className="fixed inset-0 bg-grid-pattern pointer-events-none z-0 opacity-60"></div>
+    <div className="flex min-h-screen bg-mariate-dark relative overflow-hidden text-slate-200 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
       
-      {/* Dynamic Background color based on active profile */}
+      {/* 1. Cinematic Noise Overlay */}
+      <div className="bg-noise z-10"></div>
+
+      {/* 2. Dynamic Background Animation (Replaces static grid) */}
+      <BackgroundCanvas />
+      
+      {/* 3. Dynamic Ambient Glow (Breathing) */}
       <div 
-        className="fixed -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-[120px] pointer-events-none z-0 animate-pulse-slow transition-colors duration-1000"
-        style={{ backgroundColor: `${activeProfile.themeColor}33` }} // 33 is approx 20% opacity hex
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full blur-[120px] pointer-events-none z-0 opacity-15 transition-colors duration-1000 animate-pulse-slow mix-blend-screen"
+        style={{ backgroundColor: activeProfile.themeColor }} 
       ></div>
-      <div className="fixed bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
       {/* Sidebar Navigation */}
       <Nav 
@@ -70,9 +75,12 @@ function App() {
       {/* Main Content Area */}
       <main className="flex-1 ml-20 md:ml-72 p-4 md:p-8 overflow-y-auto h-screen relative z-10 scroll-smooth">
         <div className="max-w-7xl mx-auto h-full pb-10 flex flex-col">
-          <div className="flex-1">
+          <div className="flex-1 animate-fade-in-up">
              {currentMode === AppMode.DEFENSE && (
                 <DefenseMode lang={language} activeProfile={activeProfile} />
+             )}
+             {currentMode === AppMode.TARGETING && (
+                <TargetingMode lang={language} activeProfile={activeProfile} />
              )}
              {currentMode === AppMode.TRANSLATOR && (
                 <TranslatorMode activeProfile={activeProfile} />
@@ -91,16 +99,20 @@ function App() {
              )}
           </div>
         
-          {/* Professional Footer Branding */}
-          <div className="w-full text-center py-8 text-slate-600 text-[10px] font-mono font-medium tracking-[0.3em] uppercase border-t border-white/5 mt-12">
-            {t(language, 'footer')} &bull; SYSTEM STATUS: <span className="text-emerald-500">ONLINE</span>
+          {/* Footer */}
+          <div className="w-full text-center py-8 text-slate-600/50 text-[10px] font-mono font-medium tracking-[0.3em] uppercase mt-12 flex items-center justify-center gap-4">
+            <span>{t(language, 'footer')}</span>
+            <span className="w-px h-3 bg-slate-700"></span>
+            <span className="flex items-center gap-1.5">
+              SYSTEM <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> ONLINE
+            </span>
           </div>
         </div>
       </main>
 
       {!process.env.API_KEY && (
-        <div className="fixed bottom-4 right-4 bg-red-600/90 backdrop-blur text-white px-4 py-2 rounded shadow-lg z-50 font-bold text-sm border border-red-400">
-          WARNING: process.env.API_KEY is missing.
+        <div className="fixed bottom-4 right-4 bg-red-600/90 backdrop-blur-md text-white px-4 py-2 rounded-lg shadow-xl z-50 font-bold text-xs border border-red-400 font-mono">
+          [!] SYSTEM ALERT: API_KEY MISSING
         </div>
       )}
     </div>

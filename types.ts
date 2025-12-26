@@ -7,6 +7,16 @@ export enum ResponseTone {
   VIRAL = "Viral/Memeable"
 }
 
+export enum VoterType {
+  HARD_SUPPORT = "Hard Core Support",
+  SOFT_SUPPORT = "Soft Supporter",
+  UNDECIDED = "Undecided/Swing",
+  SOFT_OPPOSITION = "Soft Opposition",
+  HARD_OPPOSITION = "Hard Opposition",
+  TROLL = "Troll/Bot",
+  MEDIA = "Media/Press"
+}
+
 export interface GeneratedResponse {
   tone: ResponseTone;
   content: string;
@@ -26,6 +36,7 @@ export interface CandidateProfile {
 export interface AnalysisResult {
   sentiment: 'Negative' | 'Neutral' | 'Positive' | 'Troll';
   intent: string;
+  voterClassification: VoterType; // New Field
   riskLevel: 'Low' | 'Medium' | 'High';
   warningMessage?: string;
   legalReviewRequested?: boolean; 
@@ -53,7 +64,8 @@ export enum AppMode {
   DEFENSE = 'defense',
   TRANSLATOR = 'translator',
   NETWORK = 'network',
-  PROFILE = 'profile'
+  PROFILE = 'profile',
+  TARGETING = 'targeting' // New Mode
 }
 
 export type Language = 'ES' | 'EN' | 'FR' | 'DE';
@@ -72,4 +84,20 @@ export interface NetworkAgentAnalysis {
   trends: string[];
   recommendations: string[];
   best_platform: string;
+}
+
+// New Segmentation Interfaces
+export interface TargetSegment {
+  id: string;
+  name: string;
+  demographics: {
+    ageRange: string;
+    gender: string;
+    location: string;
+  };
+  estimatedSize: number;
+  affinityScore: number; // 0-100 probability of voting
+  topInterests: string[];
+  painPoints: string[];
+  recommendedStrategy: string;
 }

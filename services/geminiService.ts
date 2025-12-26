@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile } from "../types";
+import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType } from "../types";
 
 export const analyzeAndGenerate = async (
   author: string,
@@ -32,7 +32,7 @@ INSTRUCCIONES DE ESTILO:
 `;
 
   let promptText = `
-  Analiza el siguiente post de redes sociales y genera 5 OPCIONES DE RESPUESTA distintas.
+  Analiza el siguiente post de redes sociales.
   
   AUTOR DEL POST: ${author}
   CONTENIDO (Texto detectado): "${postContent}"
@@ -47,17 +47,28 @@ INSTRUCCIONES DE ESTILO:
   }
 
   promptText += `
-  REGLAS CRÍTICAS DE SEGURIDAD (RISK LEVEL):
+  PASO 1: PERFILAMIENTO DE VOTANTE (Psychographics).
+  Clasifica al autor en una de estas categorías según su tono y contenido:
+  - "Hard Core Support": Fanático o base sólida.
+  - "Soft Supporter": Simpatizante moderado.
+  - "Undecided/Swing": Indeciso, hace preguntas genuinas, no ataca.
+  - "Soft Opposition": Crítico reflexivo, puede ser persuadido.
+  - "Hard Opposition": Hater, oposición radical, insulta.
+  - "Troll/Bot": Cuenta falsa, spam, ataque coordinado sin lógica.
+  - "Media/Press": Periodista o medio de comunicación.
+
+  PASO 2: ANÁLISIS DE RIESGO.
   - Si el contenido menciona: "Paramilitarismo", "Investigación Fiscalía", "Corrupción", "Lavado de activos", "Violencia", o acusaciones legales graves -> SET riskLevel = 'High'.
   - Si es 'High', el 'warningMessage' DEBE advertir: "TEMA LEGAL/SENSIBLE DETECTADO. NO RESPONDER SIN ABOGADO."
   - Si es un 'bait' o trampa evidente -> SET riskLevel = 'Medium'.
 
-  TAREA ADICIONAL (AGENTE FOLLOW-UP):
-  Sugiere 3 acciones de seguimiento inmediatas (Ej: "Monitorear palabras clave por 2h", "Preparar comunicado oficial", "Ignorar y silenciar cuenta").
+  PASO 3: RESPUESTA TÁCTICA.
+  Genera 5 variaciones de respuesta y sugerencias de seguimiento.
 
   Formato de salida esperado (JSON):
   - sentiment: (Negative, Neutral, Positive, Troll)
-  - intent: Breve descripción de la intención del autor (ataque, duda, apoyo).
+  - intent: Breve descripción de la intención del autor.
+  - voterClassification: (Hard Core Support, Soft Supporter, Undecided/Swing, Soft Opposition, Hard Opposition, Troll/Bot, Media/Press)
   - riskLevel: (Low, Medium, High)
   - warningMessage: Mensaje OBLIGATORIO si RiskLevel es High o Medium.
   - followUpSuggestions: Array de strings con 3 sugerencias tácticas.
@@ -92,6 +103,10 @@ INSTRUCCIONES DE ESTILO:
           properties: {
             sentiment: { type: Type.STRING, enum: ['Negative', 'Neutral', 'Positive', 'Troll'] },
             intent: { type: Type.STRING },
+            voterClassification: { type: Type.STRING, enum: [
+              VoterType.HARD_SUPPORT, VoterType.SOFT_SUPPORT, VoterType.UNDECIDED, 
+              VoterType.SOFT_OPPOSITION, VoterType.HARD_OPPOSITION, VoterType.TROLL, VoterType.MEDIA
+            ]},
             riskLevel: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
             warningMessage: { type: Type.STRING },
             followUpSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
