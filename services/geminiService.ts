@@ -241,7 +241,7 @@ export const generateAdCampaign = async (
       Design a micro-targeted advertising campaign for this specific segment.
 
       REQUIREMENTS:
-      1. VISUAL PROMPT: Write a detailed prompt for an image generator (like Midjourney) that represents this audience's reality but with a hopeful political twist consistent with ${profile.name}'s brand.
+      1. VISUAL PROMPT: Write a detailed prompt for an image generator (like Midjourney or Imagen) that represents this audience's reality but with a hopeful political twist consistent with ${profile.name}'s brand. It should look like high-end political photography or modern graphic design.
       2. COPY: Write a social media caption (Instagram/TikTok style) that speaks directly to their pain points in ${profile.name}'s voice.
       3. CHRONOPOSTING: Determine the BEST DAY and TIME to post for this specific demographic (e.g., Students might be active late night, Workers early morning). Explain why.
 
@@ -283,5 +283,34 @@ export const generateAdCampaign = async (
     } catch (e) {
       console.error(e);
       throw e;
+    }
+};
+
+export const generateMarketingImage = async (prompt: string): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-image-preview', // NANO BANANA PRO
+            contents: {
+                parts: [{ text: prompt }],
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: "1:1",
+                    imageSize: "1K"
+                }
+            },
+        });
+
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
+        }
+        throw new Error("No image generated");
+    } catch (error) {
+        console.error("Image Gen Error:", error);
+        throw error;
     }
 };

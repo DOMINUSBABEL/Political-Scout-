@@ -90,9 +90,10 @@ export interface NetworkAgentAnalysis {
 
 // New Segmentation & Ad Interfaces
 export interface AdCampaign {
-  visualPrompt: string; // For Midjourney/Imagen
+  visualPrompt: string; // For Midjourney/Imagen/Gemini
   copyText: string;
   callToAction: string;
+  generatedImageUrl?: string; // New: Stores the generated or uploaded ad image
   chronoposting: {
     bestDay: string;
     bestTime: string;

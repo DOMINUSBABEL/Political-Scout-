@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { Language, CandidateProfile, TargetSegment, AdCampaign } from '../types';
-import { generateAdCampaign } from '../services/geminiService';
+import { generateAdCampaign, generateMarketingImage } from '../services/geminiService';
 import { t } from '../utils/translations';
 import { ThinkingConsole } from './ThinkingConsole';
 
@@ -57,6 +57,8 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   
   // Ad Campaign Generation States
   const [generatingAdFor, setGeneratingAdFor] = useState<string | null>(null);
+  const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
+  const fileInputRefs = useRef<{[key: string]: HTMLInputElement | null}>({});
 
   const generateSegments = async () => {
     setIsGenerating(true);
@@ -181,6 +183,40 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
       } finally {
           setGeneratingAdFor(null);
       }
+  };
+
+  const handleGenerateImage = async (segment: TargetSegment) => {
+    if (!segment.adCampaign?.visualPrompt) return;
+    setGeneratingImageFor(segment.id);
+    try {
+        const imageUrl = await generateMarketingImage(segment.adCampaign.visualPrompt);
+        setSegments(prev => prev.map(s => 
+            s.id === segment.id && s.adCampaign
+              ? { ...s, adCampaign: { ...s.adCampaign, generatedImageUrl: imageUrl } } 
+              : s
+        ));
+    } catch (err) {
+        console.error("Image Gen Failed", err);
+        alert("Failed to generate image. Try again.");
+    } finally {
+        setGeneratingImageFor(null);
+    }
+  };
+
+  const handleCustomImageUpload = (e: React.ChangeEvent<HTMLInputElement>, segmentId: string) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setSegments(prev => prev.map(s => 
+          s.id === segmentId && s.adCampaign
+            ? { ...s, adCampaign: { ...s.adCampaign, generatedImageUrl: base64 } } 
+            : s
+        ));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -363,17 +399,65 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
 
                     {/* AD CAMPAIGN GENERATOR SECTION */}
                     {seg.adCampaign ? (
-                         <div className="bg-emerald-900/20 border border-emerald-500/30 rounded p-3 relative z-10 animate-fade-in-up">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                                    {t(lang, 'adVisual')}
-                                </h4>
-                                <span className="text-[8px] bg-emerald-500 text-black font-bold px-1 rounded">READY</span>
+                         <div className="bg-emerald-900/10 border border-emerald-500/20 rounded p-3 relative z-10 animate-fade-in-up">
+                            {/* Visual Preview Card (Social Media Mockup) */}
+                            <div className="bg-black border border-white/10 rounded overflow-hidden mb-3 max-w-[280px] mx-auto shadow-2xl">
+                                {/* Header */}
+                                <div className="p-2 flex items-center gap-2 border-b border-white/5">
+                                    <div className="w-6 h-6 rounded-full bg-emerald-600"></div>
+                                    <div className="flex-1">
+                                        <p className="text-[9px] font-bold text-white">{activeProfile.name}</p>
+                                        <p className="text-[8px] text-slate-400">Sponsored • {seg.adCampaign.chronoposting.bestDay}</p>
+                                    </div>
+                                </div>
+                                {/* Image Area */}
+                                <div className="aspect-square bg-slate-900 relative group/img">
+                                    {seg.adCampaign.generatedImageUrl ? (
+                                        <img src={seg.adCampaign.generatedImageUrl} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-600 text-[10px] text-center p-4">
+                                            {generatingImageFor === seg.id ? (
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                                    <span>GENERATING VISUALS...</span>
+                                                </div>
+                                            ) : (
+                                                "NO VISUAL GENERATED"
+                                            )}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Action Buttons Overlay */}
+                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                        <button 
+                                            onClick={() => handleGenerateImage(seg)}
+                                            disabled={!!generatingImageFor}
+                                            className="px-3 py-1 bg-emerald-600 text-white rounded text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500"
+                                        >
+                                            {seg.adCampaign.generatedImageUrl ? "Regenerate AI" : "Generate AI Visual"}
+                                        </button>
+                                        <label className="px-3 py-1 bg-white/10 text-white rounded text-[9px] font-bold uppercase tracking-wider hover:bg-white/20 cursor-pointer border border-white/20">
+                                            Upload Custom
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                onChange={(e) => handleCustomImageUpload(e, seg.id)} 
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                                {/* Footer / Copy */}
+                                <div className="p-2 text-[9px]">
+                                    <p className="text-white mb-1 leading-snug">
+                                        <span className="font-bold mr-1">{activeProfile.name}</span>
+                                        {seg.adCampaign.copyText}
+                                    </p>
+                                    <p className="text-blue-400 text-[8px] uppercase font-bold tracking-wide mt-2">
+                                        {seg.adCampaign.callToAction} &gt;
+                                    </p>
+                                </div>
                             </div>
-                            <p className="text-[10px] text-slate-300 italic mb-2 border-l-2 border-white/20 pl-2">"{seg.adCampaign.visualPrompt.substring(0, 80)}..."</p>
-                            
-                            <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">{t(lang, 'adCopy')}</h4>
-                            <p className="text-[10px] text-white mb-2 font-medium">"{seg.adCampaign.copyText}"</p>
                             
                             <div className="bg-black/40 p-2 rounded flex justify-between items-center">
                                 <div>
