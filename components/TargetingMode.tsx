@@ -274,33 +274,33 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                     {/* Background Affinity Gradient */}
                     <div 
                       className="absolute top-0 right-0 h-full w-1/2 opacity-10 pointer-events-none bg-gradient-to-l from-purple-500 to-transparent"
-                      style={{ opacity: seg.affinityScore / 500 }}
+                      style={{ opacity: (seg.affinityScore || 0) / 500 }}
                     ></div>
 
                     <div className="flex justify-between items-start mb-3 relative z-10">
                        <h3 className="font-bold text-white text-sm uppercase tracking-wider pr-2">{seg.name}</h3>
                        <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded border whitespace-nowrap ${
-                         seg.affinityScore > 75 ? 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50' :
-                         seg.affinityScore > 50 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-500/50' :
+                         (seg.affinityScore || 0) > 75 ? 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50' :
+                         (seg.affinityScore || 0) > 50 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-500/50' :
                          'bg-red-900/50 text-red-400 border-red-500/50'
                        }`}>
-                         {seg.affinityScore}% AFFINITY
+                         {seg.affinityScore || 0}% AFFINITY
                        </span>
                     </div>
 
                     <div className="text-[10px] font-mono text-slate-400 mb-4 space-y-1 relative z-10">
-                       <p className="flex items-center gap-2"><span className="opacity-50">📍</span> {seg.demographics.location}</p>
-                       <p className="flex items-center gap-2"><span className="opacity-50">👥</span> {seg.demographics.gender}, {seg.demographics.ageRange}</p>
-                       <p className="flex items-center gap-2"><span className="opacity-50">📊</span> Est. Size: {seg.estimatedSize.toLocaleString()}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">📍</span> {seg.demographics?.location || "Unknown"}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">👥</span> {seg.demographics?.gender || "Any"}, {seg.demographics?.ageRange || "Any"}</p>
+                       <p className="flex items-center gap-2"><span className="opacity-50">📊</span> Est. Size: {(seg.estimatedSize || 0).toLocaleString()}</p>
                     </div>
 
                     <div className="mb-4 relative z-10">
                        <p className="text-[9px] uppercase font-bold text-slate-500 mb-1">Top Interests & Pain Points</p>
                        <div className="flex flex-wrap gap-1">
-                          {seg.topInterests.slice(0, 2).map((int, i) => (
+                          {(seg.topInterests || []).slice(0, 2).map((int, i) => (
                             <span key={`int-${i}`} className="text-[9px] bg-blue-900/20 px-1.5 py-0.5 rounded text-blue-200 border border-blue-500/20">{int}</span>
                           ))}
-                          {seg.painPoints.slice(0, 2).map((pp, i) => (
+                          {(seg.painPoints || []).slice(0, 2).map((pp, i) => (
                             <span key={`pp-${i}`} className="text-[9px] bg-red-900/20 px-1.5 py-0.5 rounded text-red-200 border border-red-500/20">⚠️ {pp}</span>
                           ))}
                        </div>
@@ -310,7 +310,7 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
                        <p className="text-[9px] uppercase font-bold text-purple-400 mb-1 flex items-center gap-1">
                           <span>⚡</span> Strategy Tip
                        </p>
-                       <p className="text-xs text-slate-200 leading-snug italic">"{seg.recommendedStrategy}"</p>
+                       <p className="text-xs text-slate-200 leading-snug italic">"{seg.recommendedStrategy || "N/A"}"</p>
                     </div>
                  </div>
                ))}
