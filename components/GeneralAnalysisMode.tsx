@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { analyzeAndGenerate } from '../services/geminiService';
 import { scoutUrl, extractDataFromImage } from '../services/scoutService';
@@ -34,6 +33,9 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
   
   // NEW: Deep Research State
   const [deepResearch, setDeepResearch] = useState(false);
+  
+  // NEW: Response Count
+  const [responseCount, setResponseCount] = useState<number>(5);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -155,18 +157,19 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
 
     try {
       const imageContext = selectedImage ? { base64: selectedImage, mimeType: imageMime } : undefined;
-      // PASS ACTIVE PROFILE TO GEMINI + DEEP RESEARCH FLAG
+      // PASS ACTIVE PROFILE TO GEMINI + DEEP RESEARCH FLAG + RESPONSE COUNT
       const analysis = await analyzeAndGenerate(
         author, 
         postContent, 
         activeProfile,
         imageContext, 
         scoutVisualDescription,
-        deepResearch
+        deepResearch,
+        responseCount
       );
       setResult(analysis);
     } catch (err) {
-      setError('Analysis Protocol Failed. Check API Key.');
+      setError('Analysis Protocol Failed. Please try again or check API connection.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -176,6 +179,29 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
   const handleLegalFlag = () => {
     setLegalFlagged(true);
     alert("ALERT: Content flagged for immediate review by Legal Counsel. Protocol suspended until approval.");
+  };
+
+  const handleExport = () => {
+    if (!result) return;
+    const exportData = {
+        metadata: {
+            timestamp: new Date().toISOString(),
+            profile: activeProfile.name,
+            input_author: author,
+            input_content: postContent
+        },
+        analysis: result
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CandidatoAI_Analysis_Report_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const fillSimulationData = () => {
@@ -233,13 +259,23 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
              </span>
           </div>
         </div>
-        <button 
-          onClick={fillSimulationData}
-          className="relative overflow-hidden group px-4 py-2 bg-white/5 border border-white/10 rounded font-mono text-[10px] uppercase tracking-widest text-slate-400 hover:text-white hover:border-emerald-500/50 transition-all"
-        >
-          <span className="relative z-10">{t(lang, 'loadSimulation')}</span>
-          <div className="absolute inset-0 bg-emerald-500/10 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300"></div>
-        </button>
+        <div className="flex gap-2">
+            {result && (
+                <button 
+                  onClick={handleExport}
+                  className="px-4 py-2 bg-blue-900/30 border border-blue-500/30 rounded font-mono text-[10px] uppercase tracking-widest text-blue-300 hover:text-white hover:bg-blue-600/50 transition-all flex items-center gap-2"
+                >
+                    <span>💾</span> Export JSON
+                </button>
+            )}
+            <button 
+              onClick={fillSimulationData}
+              className="relative overflow-hidden group px-4 py-2 bg-white/5 border border-white/10 rounded font-mono text-[10px] uppercase tracking-widest text-slate-400 hover:text-white hover:border-emerald-500/50 transition-all"
+            >
+              <span className="relative z-10">{t(lang, 'loadSimulation')}</span>
+              <div className="absolute inset-0 bg-emerald-500/10 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300"></div>
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -371,7 +407,7 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
                   {/* Deep Research Toggle */}
                   <div 
                     onClick={() => setDeepResearch(!deepResearch)}
-                    className={`flex items-center gap-3 p-3 rounded cursor-pointer border transition-all select-none w-full md:w-auto ${
+                    className={`flex items-center gap-3 p-3 rounded cursor-pointer border transition-all select-none flex-1 md:flex-none ${
                       deepResearch 
                       ? 'bg-purple-900/30 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]' 
                       : 'bg-black/20 border-white/10 hover:bg-white/5'
@@ -386,6 +422,23 @@ export const GeneralAnalysisMode: React.FC<GeneralAnalysisModeProps> = ({ lang, 
                        <span className={`block text-[10px] font-bold uppercase tracking-widest ${deepResearch ? 'text-purple-400' : 'text-slate-400'}`}>Deep Research</span>
                        <span className="text-[9px] text-slate-500 font-mono">Enable Google Search + Reasoning</span>
                      </div>
+                  </div>
+
+                  {/* Response Count Slider (New Feature) */}
+                  <div className="flex flex-col justify-center gap-1 p-2 rounded border border-white/10 bg-black/20 w-full md:w-48">
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                          <span>Responses</span>
+                          <span className="text-emerald-400">{responseCount}</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="5" 
+                        max="10" 
+                        step="1"
+                        value={responseCount} 
+                        onChange={(e) => setResponseCount(Number(e.target.value))}
+                        className="w-full accent-emerald-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                      />
                   </div>
 
                   <button

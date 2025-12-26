@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType, TargetSegment, AdCampaign, TrendAnalysis } from "../types";
+import { AnalysisResult, ResponseTone, NetworkStat, NetworkAgentAnalysis, CandidateProfile, VoterType, TargetSegment, AdCampaign, TrendAnalysis, ContentScheduleItem } from "../types";
 
 // Helper for Base64 Audio decoding
 const decodeAudioData = async (base64: string, ctx: AudioContext): Promise<AudioBuffer> => {
@@ -28,7 +28,8 @@ export const analyzeAndGenerate = async (
   profile: CandidateProfile,
   imageContext?: { base64?: string; mimeType?: string },
   scoutVisualDescription?: string,
-  deepResearch: boolean = false
+  deepResearch: boolean = false,
+  responseCount: number = 5
 ): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -40,6 +41,8 @@ ${profile.styleDescription}
 
 BASE DE CONOCIMIENTO (CONTEXTO Y PROPUESTAS):
 ${profile.knowledgeBase}
+
+IDIOMA DE SALIDA: ESPAÑOL (Siempre).
 
 TU TAREA:
 Analizar posts de redes sociales (texto e imágenes) y generar respuestas defendiendo tus posturas o proponiendo tus ideas.
@@ -75,7 +78,7 @@ INSTRUCCIONES DE ESTILO:
   Detecta temas sensibles.
 
   PASO 3: RESPUESTA TÁCTICA.
-  Genera 5 variaciones.
+  Genera EXACTAMENTE ${responseCount} variaciones de respuesta en ESPAÑOL.
   
   ${deepResearch ? "PASO 4: RAZONAMIENTO (OBLIGATORIO). Explica paso a paso tu análisis antes de generar el JSON final." : ""}
   `;
@@ -102,12 +105,12 @@ INSTRUCCIONES DE ESTILO:
       config: {
         systemInstruction: SYSTEM_PROMPT,
         tools: tools,
-        thinkingConfig: deepResearch ? { thinkingBudget: 16000 } : undefined, // Optimized budget
+        thinkingConfig: deepResearch ? { thinkingBudget: 2048 } : undefined, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            thoughtProcess: { type: Type.STRING, description: "Your step-by-step reasoning logic." },
+            thoughtProcess: { type: Type.STRING, description: "Your step-by-step reasoning logic in Spanish." },
             sentiment: { type: Type.STRING, enum: ['Negative', 'Neutral', 'Positive', 'Troll'] },
             intent: { type: Type.STRING },
             voterClassification: { type: Type.STRING, enum: [
@@ -156,7 +159,7 @@ export const translateToStyle = async (text: string, profile: CandidateProfile, 
   
   TEXTO ORIGINAL: "${text}"
   
-  Solo devuelve el texto traducido con su personalidad, nada más.
+  Solo devuelve el texto traducido con su personalidad en ESPAÑOL, nada más.
   `;
 
   const tools = deepResearch ? [{ googleSearch: {} }] : [];
@@ -184,7 +187,7 @@ export const analyzeNetworkStats = async (stats: NetworkStat[], deepResearch: bo
   const prompt = `
     Eres "El Estratega de Campaña" (Campaign Manager Agent).
     
-    Analiza esta matriz de datos de redes sociales y genera un REPORTE EJECUTIVO DETALLADO:
+    Analiza esta matriz de datos de redes sociales y genera un REPORTE EJECUTIVO DETALLADO en ESPAÑOL:
     ${statsSummary}
     
     ${deepResearch ? "Realiza un análisis PROFUNDO. Busca correlaciones no obvias. Piensa paso a paso." : ""}
@@ -248,9 +251,7 @@ export const scanNetworkTrends = async (date: string, location: string): Promise
     3. Identify 3 major Breaking News headlines from that day.
     4. Provide a brief summary of the digital mood (General Sentiment).
     
-    You must use the 'googleSearch' tool to find real historical or real-time data.
-    
-    OUTPUT: JSON format.
+    OUTPUT: JSON format in SPANISH.
     `;
 
     try {
@@ -265,7 +266,7 @@ export const scanNetworkTrends = async (date: string, location: string): Promise
                     properties: {
                         date: { type: Type.STRING },
                         location: { type: Type.STRING },
-                        summary: { type: Type.STRING, description: "Executive summary of the day's digital atmosphere." },
+                        summary: { type: Type.STRING, description: "Executive summary of the day's digital atmosphere in Spanish." },
                         topTrends: {
                             type: Type.ARRAY,
                             items: {
@@ -312,6 +313,7 @@ export const generateSegments = async (region: string, profile: CandidateProfile
       4. Affinity Score (0-100, how likely are they to vote for ${profile.name} based on her style).
       5. Recommended Strategy (How to approach them).
 
+      LANGUAGE: SPANISH.
       Return JSON Array.
     `;
 
@@ -364,6 +366,63 @@ export const generateSegments = async (region: string, profile: CandidateProfile
     }
 };
 
+export const generateContentSchedule = async (topic: string, region: string, profile: CandidateProfile): Promise<ContentScheduleItem[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const prompt = `
+      ROL: Estratega Digital de Campaña Política.
+      CANDIDATO: ${profile.name} (${profile.styleDescription}).
+      REGIÓN: ${region}.
+      TEMA MANUAL (PRIORITARIO): "${topic}".
+
+      TAREA:
+      Genera un plan táctico de publicación (Chronoposting) de 5 posts para cubrir este tema durante la semana.
+      El plan debe estar optimizado para maximizar el impacto en la región y el tema dados.
+
+      REQUISITOS:
+      1. Define el mejor Día y Hora para publicar.
+      2. Selecciona la Plataforma ideal (TikTok, X, Instagram, Facebook).
+      3. Define el Formato (Reel, Hilo, Story, Video).
+      4. Escribe la Idea del Contenido (Copy idea).
+      5. Define el Objetivo Estratégico (Viralidad, Información, Ataque, Defensa).
+
+      IDIOMA: ESPAÑOL.
+      OUTPUT: JSON Array.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                // Not using Deep Research here as per user request (manual topic)
+                // But we still use standard model intelligence
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            day: { type: Type.STRING },
+                            time: { type: Type.STRING },
+                            platform: { type: Type.STRING },
+                            format: { type: Type.STRING },
+                            contentIdea: { type: Type.STRING },
+                            objective: { type: Type.STRING }
+                        }
+                    }
+                }
+            }
+        });
+
+        return JSON.parse(cleanJSON(response.text || "[]")) as ContentScheduleItem[];
+
+    } catch (e) {
+        console.error("Chronoposting Error:", e);
+        throw e;
+    }
+};
+
 export const generateAdCampaign = async (
   segment: TargetSegment, 
   profile: CandidateProfile
@@ -388,8 +447,8 @@ export const generateAdCampaign = async (
       REQUIREMENTS:
       1. VISUAL PROMPT: Write a detailed prompt for an image generator (Gemini 3 Pro Image) that represents this audience's reality with a hopeful political twist. 
       2. IMAGE ASPECT RATIO: Recommend the best aspect ratio (1:1, 16:9, 9:16) based on the target demographic's preferred platform.
-      3. COPY: Social media caption with hashtags.
-      4. AUDIO SCRIPT: Write a short 15-second radio/podcast script (approx 40 words) that ${profile.name} would say to this specific group. It must be colloquial, empathetic, and impactful.
+      3. COPY: Social media caption with hashtags (IN SPANISH).
+      4. AUDIO SCRIPT: Write a short 15-second radio/podcast script (approx 40 words) that ${profile.name} would say to this specific group. It must be colloquial, empathetic, and impactful. (IN SPANISH).
       5. CHRONOPOSTING: Determine the BEST DAY and TIME to post.
 
       OUTPUT: JSON.

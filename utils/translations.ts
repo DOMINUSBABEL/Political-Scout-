@@ -72,6 +72,12 @@ export const translations = {
     adVisual: "Prompt Visual (Midjourney)",
     adCopy: "Copy / Caption",
     adChrono: "Chronoposting (Mejor Horario)",
+    // New Chronoposting
+    chronoTitle: "CRONOPOSTING TÁCTICO",
+    chronoSubtitle: "Generación de parrilla de contenido por tema",
+    topicLabel: "Tema de Interés / Eje Temático",
+    genSchedule: "GENERAR AGENDA",
+    scheduleResults: "Agenda Táctica Sugerida",
     // New Trends
     tabUpload: "ANÁLISIS DE ARCHIVO",
     tabLiveScan: "ESCANER DE TENDENCIAS EN VIVO",
@@ -153,6 +159,12 @@ export const translations = {
     adVisual: "Visual Prompt (Midjourney)",
     adCopy: "Copy / Caption",
     adChrono: "Chronoposting (Best Time)",
+    // New Chronoposting
+    chronoTitle: "TACTICAL CHRONOPOSTING",
+    chronoSubtitle: "Generate content schedule by topic",
+    topicLabel: "Topic of Interest",
+    genSchedule: "GENERATE SCHEDULE",
+    scheduleResults: "Suggested Tactical Schedule",
     // New Trends
     tabUpload: "FILE ANALYSIS",
     tabLiveScan: "LIVE TREND SCANNER",
@@ -227,13 +239,19 @@ export const translations = {
     regionSelect: "Sélectionner Région",
     paramsTitle: "Paramètres de Segmentation",
     genSegments: "GÉNÉRER CLUSTERS",
-    segmentResults: "Segments Identifiés",
+    segmentResults: "Segments Identificados",
     affinity: "Affinité de Vote",
     strategyTip: "Stratégie Suggérée",
     genAdBtn: "CONCEVOIR CAMPAGNE",
     adVisual: "Prompt Visuel (Midjourney)",
     adCopy: "Copy / Légende",
     adChrono: "Chronoposting (Meilleur Horaire)",
+    // New Chronoposting
+    chronoTitle: "CHRONOPOSTING TACTIQUE",
+    chronoSubtitle: "Génération de planning par sujet",
+    topicLabel: "Sujet d'Intérêt",
+    genSchedule: "GÉNÉRER PLANNING",
+    scheduleResults: "Agenda Tactique Suggéré",
     // New Trends
     tabUpload: "ANALYSE DE FICHIER",
     tabLiveScan: "SCANNER DE TENDANCES EN DIRECT",
@@ -315,6 +333,12 @@ export const translations = {
     adVisual: "Visueller Prompt (Midjourney)",
     adCopy: "Copy / Bildunterschrift",
     adChrono: "Chronoposting (Beste Zeit)",
+    // New Chronoposting
+    chronoTitle: "TAKTISCHES CHRONOPOSTING",
+    chronoSubtitle: "Inhaltsplan nach Thema erstellen",
+    topicLabel: "Interessengebiet",
+    genSchedule: "ZEITPLAN GENERIEREN",
+    scheduleResults: "Vorgeschlagener Zeitplan",
     // New Trends
     tabUpload: "DATEIANALYSE",
     tabLiveScan: "LIVE-TREND-SCANNER",

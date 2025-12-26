@@ -139,3 +139,12 @@ export interface TargetSegment {
   recommendedStrategy: string;
   adCampaign?: AdCampaign; // New: Generated Ad content
 }
+
+export interface ContentScheduleItem {
+  day: string;
+  time: string;
+  platform: string;
+  format: string; // e.g. "Reel", "Tweet", "Story"
+  contentIdea: string;
+  objective: string;
+}
