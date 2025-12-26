@@ -1,10 +1,11 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { Language, CandidateProfile, TargetSegment, AdCampaign } from '../types';
 import { generateAdCampaign, generateMarketingImage, generateMarketingAudio } from '../services/geminiService';
 import { t } from '../utils/translations';
 import { ThinkingConsole } from './ThinkingConsole';
+import { ProgressBar } from './ProgressBar';
 
 interface Props {
   lang: Language;
@@ -16,10 +17,6 @@ const VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'];
 // Helper to convert base64 PCM to WAV for playback
 const pcmToWav = (base64: string) => {
     // This is a simplified placeholder. In a real app, we'd add a WAV header to the raw PCM data.
-    // For this demo, we will use a workaround or assume the browser can handle the stream if we use AudioContext.
-    // But to make the <audio> tag work, we really need a WAV header.
-    // Since implementing a full WAV encoder here is long, we will use a trick:
-    // We will let the component play it using AudioContext instead of <audio src>.
     return base64;
 };
 
@@ -67,6 +64,9 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const [deepResearch, setDeepResearch] = useState(true); 
   const [analysisReasoning, setAnalysisReasoning] = useState<string>('');
   
+  // Progress Bar
+  const [progress, setProgress] = useState(0);
+
   // Ad Campaign Generation States
   const [generatingAdFor, setGeneratingAdFor] = useState<string | null>(null);
   const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
@@ -80,6 +80,24 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
+  const fileInputRefs = useRef<{[key: string]: HTMLInputElement | null}>({});
+
+  useEffect(() => {
+    let interval: any;
+    if (isGenerating) {
+      setProgress(5);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+             const remaining = 95 - prev;
+             return prev + (remaining * 0.05); // Move 5% of the remaining distance
+        });
+      }, 500);
+    } else {
+      setProgress(100);
+      setTimeout(() => setProgress(0), 800);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const generateSegments = async () => {
     setIsGenerating(true);
@@ -276,8 +294,31 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
     }
   };
 
+  const handleExport = () => {
+      if (segments.length === 0) return;
+      const exportData = {
+          region,
+          generated_at: new Date().toISOString(),
+          segments: segments
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CandidatoAI_Targeting_${region.replace(/\s/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20 animate-fade-in-up">
+      <ProgressBar 
+          active={isGenerating} 
+          progress={progress} 
+          label={t(lang, 'scouting')}
+          estimatedSeconds={deepResearch ? 25 : 15}
+      />
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4">
@@ -288,6 +329,14 @@ export const TargetingMode: React.FC<Props> = ({ lang, activeProfile }) => {
            </h1>
            <p className="text-slate-400 mt-2 font-mono text-xs uppercase tracking-wider pl-5">// {t(lang, 'targetSubtitle')}</p>
         </div>
+        {segments.length > 0 && (
+            <button 
+              onClick={handleExport}
+              className="px-4 py-2 bg-purple-900/30 border border-purple-500/30 rounded font-mono text-[10px] uppercase tracking-widest text-purple-300 hover:text-white hover:bg-purple-600/50 transition-all flex items-center gap-2"
+            >
+                <span>💾</span> Export Segments
+            </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

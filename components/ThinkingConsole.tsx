@@ -55,31 +55,43 @@ const DEEP_STEPS = [
 
 export const ThinkingConsole: React.FC<Props> = ({ isVisible, mode = 'DEFENSE', isDeepResearch = false }) => {
   const [lines, setLines] = useState<string[]>([]);
-  const [cursor, setCursor] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     if (!isVisible) {
       setLines([]);
-      setCursor(0);
+      setElapsed(0);
       return;
     }
+
+    const timer = setInterval(() => setElapsed(prev => prev + 0.1), 100);
 
     const baseSteps = STEPS[mode] || STEPS.DEFENSE;
     const effectiveSteps = isDeepResearch 
         ? [...baseSteps.slice(0, 2), ...DEEP_STEPS, ...baseSteps.slice(2)] 
         : baseSteps;
 
-    const interval = setInterval(() => {
-      setCursor((prev) => {
-        if (prev < effectiveSteps.length) {
-          setLines(l => [...l, effectiveSteps[prev]]);
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, 1500); // Add a new line every 1.5s
+    let stepIndex = 0;
+    
+    // Add initial line
+    setLines([`[${new Date().toLocaleTimeString()}] System Initialized.`]);
 
-    return () => clearInterval(interval);
+    const stepInterval = setInterval(() => {
+      if (stepIndex < effectiveSteps.length) {
+        setLines(l => [...l, effectiveSteps[stepIndex]]);
+        stepIndex++;
+      } else {
+        // Prevent "Frozen" feeling by adding "Processing..." dots occasionally if it takes too long
+        if (Math.random() > 0.7) {
+            setLines(l => [...l, "Working on complex reasoning chain..."]);
+        }
+      }
+    }, 2500); // Slower updates to make it readable
+
+    return () => {
+        clearInterval(timer);
+        clearInterval(stepInterval);
+    };
   }, [isVisible, mode, isDeepResearch]);
 
   if (!isVisible) return null;
@@ -89,19 +101,35 @@ export const ThinkingConsole: React.FC<Props> = ({ isVisible, mode = 'DEFENSE', 
       {/* Scanline */}
       <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/20 animate-scan"></div>
       
-      <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
-         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-         <span className="text-emerald-400 font-bold uppercase tracking-widest">
-            {isDeepResearch ? "GEMINI 3 PRO // DEEP REASONING ENGINE" : "GEMINI 3 PRO // PROCESSING"}
-         </span>
+      <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+         <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-emerald-400 font-bold uppercase tracking-widest">
+                {isDeepResearch ? "GEMINI 3 PRO // DEEP REASONING" : "GEMINI 3 PRO // ACTIVE"}
+            </span>
+         </div>
+         <div className="text-slate-500 font-mono">
+            T+{elapsed.toFixed(1)}s
+         </div>
       </div>
 
+      {/* Tools Indicator */}
+      {isDeepResearch && (
+          <div className="flex gap-2 mb-2">
+              <span className="px-2 py-0.5 bg-blue-900/40 text-blue-300 rounded border border-blue-500/30 text-[9px] animate-pulse">
+                  TOOL: GoogleSearch
+              </span>
+              <span className="px-2 py-0.5 bg-purple-900/40 text-purple-300 rounded border border-purple-500/30 text-[9px]">
+                  MODE: Thinking
+              </span>
+          </div>
+      )}
+
       <div className="space-y-1 h-32 overflow-y-auto custom-scrollbar flex flex-col-reverse">
-         {lines.length === 0 && <span className="text-slate-500 italic">Initializing agent link...</span>}
          {lines.map((line, idx) => (
-           <div key={idx} className="flex gap-2">
-             <span className="text-slate-600">[{new Date().toLocaleTimeString()}]</span>
-             <span className={line.includes("DEEP") ? "text-purple-300 font-bold" : "text-emerald-100"}>
+           <div key={idx} className="flex gap-2 border-l border-white/5 pl-2">
+             <span className="text-slate-600 shrink-0">[{new Date().toLocaleTimeString()}]</span>
+             <span className={line.includes("DEEP") ? "text-purple-300 font-bold" : line.includes("Working") ? "text-slate-500 italic" : "text-emerald-100"}>
                {line.includes("...") ? line : `>> ${line}`}
              </span>
            </div>

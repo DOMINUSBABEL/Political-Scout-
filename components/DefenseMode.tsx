@@ -43,13 +43,17 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile })
   useEffect(() => {
     let interval: any;
     if (loading || scouting) {
-      setProgress(10);
+      setProgress(5);
+      // Asymptotic progress: approaches 95% but never reaches 100% until done
       interval = setInterval(() => {
-        setProgress((prev) => (prev < 90 ? prev + Math.random() * 10 : prev));
+        setProgress((prev) => {
+             const remaining = 95 - prev;
+             return prev + (remaining * 0.05); // Move 5% of the remaining distance
+        });
       }, 500);
     } else {
       setProgress(100);
-      setTimeout(() => setProgress(0), 1000);
+      setTimeout(() => setProgress(0), 800);
     }
     return () => clearInterval(interval);
   }, [loading, scouting]);
@@ -178,6 +182,28 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile })
     alert("ALERT: Content flagged for immediate review by Legal Counsel. Protocol suspended until approval.");
   };
 
+  const handleExport = () => {
+    if (!result) return;
+    const exportData = {
+        metadata: {
+            timestamp: new Date().toISOString(),
+            profile: activeProfile.name,
+            input_author: author,
+            input_content: postContent
+        },
+        analysis: result
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CandidatoAI_Defense_Report_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const fillSimulationData = () => {
     setUrl('https://twitter.com/demo-mode/status/123456789');
     setAuthor('');
@@ -216,7 +242,12 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile })
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12 px-2 md:px-0 relative">
-      <ProgressBar active={loading || scouting} progress={progress} label={scouting ? t(lang, 'scouting') : t(lang, 'analyzing')} />
+      <ProgressBar 
+        active={loading || scouting} 
+        progress={progress} 
+        label={scouting ? t(lang, 'scouting') : t(lang, 'analyzing')}
+        estimatedSeconds={deepResearch ? 25 : 10} // Higher estimate for deep research
+      />
 
       {/* Tactical Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4 md:gap-0 relative">
@@ -226,20 +257,30 @@ export const DefenseMode: React.FC<DefenseModeProps> = ({ lang, activeProfile })
             {t(lang, 'warRoomTitle')}
           </h1>
           <div className="flex items-center gap-3 mt-3">
-             <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest bg-white/5 px-2 py-1 rounded">Protocol: Defense</span>
+             <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest bg-white/5 px-2 py-1 rounded">Protocol: General Analysis</span>
              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono flex items-center gap-2">
                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                Agent: {activeProfile.name}
              </span>
           </div>
         </div>
-        <button 
-          onClick={fillSimulationData}
-          className="relative overflow-hidden group px-4 py-2 bg-white/5 border border-white/10 rounded font-mono text-[10px] uppercase tracking-widest text-slate-400 hover:text-white hover:border-emerald-500/50 transition-all"
-        >
-          <span className="relative z-10">{t(lang, 'loadSimulation')}</span>
-          <div className="absolute inset-0 bg-emerald-500/10 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300"></div>
-        </button>
+        <div className="flex gap-2">
+            {result && (
+                <button 
+                  onClick={handleExport}
+                  className="px-4 py-2 bg-blue-900/30 border border-blue-500/30 rounded font-mono text-[10px] uppercase tracking-widest text-blue-300 hover:text-white hover:bg-blue-600/50 transition-all flex items-center gap-2"
+                >
+                    <span>💾</span> Export JSON
+                </button>
+            )}
+            <button 
+              onClick={fillSimulationData}
+              className="relative overflow-hidden group px-4 py-2 bg-white/5 border border-white/10 rounded font-mono text-[10px] uppercase tracking-widest text-slate-400 hover:text-white hover:border-emerald-500/50 transition-all"
+            >
+              <span className="relative z-10">{t(lang, 'loadSimulation')}</span>
+              <div className="absolute inset-0 bg-emerald-500/10 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300"></div>
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
